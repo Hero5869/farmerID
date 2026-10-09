@@ -224,5 +224,113 @@
 
     window.onload = updateView;
   </script>
+
+<script>
+  // Background request-status refresh: updates only the request data/table.
+  // It does not reload the page or modify any form fields.
+  (() => {
+    const REFRESH_INTERVAL_MS = 5000;
+    let refreshInProgress = false;
+    let lastDataSignature = '';
+
+    function jsonpRequest(url, timeoutMs = 10000) {
+      return new Promise((resolve, reject) => {
+        const callbackName = '__docuVaultJsonp_' +
+          Date.now() + '_' + Math.random().toString(36).slice(2);
+        const script = document.createElement('script');
+        let finished = false;
+
+        const cleanup = () => {
+          if (finished) return;
+          finished = true;
+          clearTimeout(timer);
+          try { delete window[callbackName]; } catch (_) {
+            window[callbackName] = undefined;
+          }
+          script.remove();
+        };
+
+        const timer = setTimeout(() => {
+          cleanup();
+          reject(new Error('Request refresh timed out'));
+        }, timeoutMs);
+
+        window[callbackName] = (data) => {
+          cleanup();
+          resolve(data);
+        };
+
+        script.onerror = () => {
+          cleanup();
+          reject(new Error('Could not reach the request service'));
+        };
+
+        const separator = url.includes('?') ? '&' : '?';
+        script.src = url + separator +
+          'phone=' + encodeURIComponent(currentUser.phone) +
+          '&callback=' + encodeURIComponent(callbackName) +
+          '&_=' + Date.now();
+
+        document.head.appendChild(script);
+      });
+    }
+
+    async function refreshRequestData() {
+      if (refreshInProgress || document.hidden || !currentUser ||
+          !currentUser.phone || !APPS_SCRIPT_URL) return;
+
+      refreshInProgress = true;
+      try {
+        const result = await jsonpRequest(APPS_SCRIPT_URL);
+        if (!result || result.status !== 'success' ||
+            !Array.isArray(result.requests)) return;
+
+        const remoteRequests = result.requests;
+        const signature = JSON.stringify(remoteRequests.map(r => [
+          r.id, r.status, r.pdfData || null, r.pdfName || null
+        ]));
+
+        // Avoid rebuilding the table if nothing has changed.
+        if (signature === lastDataSignature) return;
+        lastDataSignature = signature;
+
+        const localRequests = JSON.parse(
+          localStorage.getItem('docu_standalone_reqs') || '[]'
+        );
+
+        // Merge only this signed-in customer's remote requests into local cache.
+        // Preserve other local entries and all currently typed form values.
+        const remoteById = new Map(remoteRequests.map(r => [String(r.id), r]));
+        const merged = localRequests.map(localReq => {
+          if (String(localReq.customerPhone) !== String(currentUser.phone)) {
+            return localReq;
+          }
+          const remoteReq = remoteById.get(String(localReq.id));
+          return remoteReq ? { ...localReq, ...remoteReq } : localReq;
+        });
+
+        for (const remoteReq of remoteRequests) {
+          const exists = merged.some(r => String(r.id) === String(remoteReq.id));
+          if (!exists) merged.push(remoteReq);
+        }
+
+        localStorage.setItem('docu_standalone_reqs', JSON.stringify(merged));
+        renderUserRequests();
+      } catch (err) {
+        // Keep the current page and typed content intact if the network is unavailable.
+        console.debug('Background request refresh skipped:', err.message);
+      } finally {
+        refreshInProgress = false;
+      }
+    }
+
+    // Start after the page's normal initial view has been rendered.
+    window.addEventListener('load', () => {
+      refreshRequestData();
+      setInterval(refreshRequestData, REFRESH_INTERVAL_MS);
+    });
+  })();
+</script>
+
 </body>
 </html>
