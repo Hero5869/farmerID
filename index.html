@@ -6,7 +6,7 @@
   <title>Farmer ID Portal</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
   <style>
     body { font-family: 'Inter', sans-serif; }
     .mono { font-family: 'JetBrains Mono', monospace; }
@@ -22,19 +22,19 @@
       </div>
       <div>
         <span class="font-extrabold text-white text-base tracking-tight block">Farmer ID Portal</span>
-        <span class="text-[10px] text-emerald-400 font-medium">Digital Document & Verification Services</span>
+        <span class="text-[10px] text-emerald-400 font-medium">Digital Verification & Document Services</span>
       </div>
     </div>
     <div id="navUserBadge" class="hidden text-xs text-slate-400">
-      Signed in as <span id="navUserName" class="text-white font-bold"></span> 
-      (<span id="navUserPhone" class="mono text-emerald-400"></span>)
-      <button onclick="handleLogout()" class="ml-4 px-2.5 py-1 bg-slate-800 hover:bg-rose-900/50 text-rose-300 rounded border border-rose-800/40 transition">Log Out</button>
+      Signed in as <span id="navUserName" class="text-white font-bold">--</span> 
+      (<span id="navUserPhone" class="mono text-emerald-400">--</span>)
+      <button onclick="logoutClient()" class="ml-4 px-2.5 py-1 bg-slate-800 hover:bg-rose-900/50 text-rose-300 rounded border border-rose-800/40 transition">Log Out</button>
     </div>
   </nav>
 
-  <!-- Banner Alerts -->
+  <!-- Notification Banner -->
   <div id="alertBanner" class="hidden max-w-4xl mx-auto w-full px-4 mt-4">
-    <div id="alertBox" class="p-3.5 rounded-xl text-xs font-semibold flex items-center justify-between border">
+    <div id="alertBox" class="p-3 rounded-xl text-xs font-semibold flex items-center justify-between border">
       <span id="alertMsg"></span>
       <button onclick="dismissAlert()" class="ml-2 text-slate-400 hover:text-white font-bold">✕</button>
     </div>
@@ -42,57 +42,59 @@
 
   <main class="flex-1 max-w-4xl w-full mx-auto px-4 py-8">
     
-    <!-- Sign In / Register Modal Card -->
+    <!-- Authentication Box -->
     <div id="authSection" class="max-w-md mx-auto bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl">
       <h2 id="authHeading" class="text-xl font-bold text-white text-center">Farmer Account Sign In</h2>
-      <p class="text-xs text-slate-400 text-center mt-1">Authorized access to document status and delivery</p>
+      <p class="text-xs text-slate-400 text-center mt-1">Access your document delivery portal securely</p>
 
       <div class="flex border-b border-slate-800 my-5 text-xs font-bold">
-        <button id="tabIn" onclick="setAuthMode('login')" class="flex-1 pb-3 text-emerald-400 border-b-2 border-emerald-500">Sign In</button>
-        <button id="tabUp" onclick="setAuthMode('reg')" class="flex-1 pb-3 text-slate-500 hover:text-slate-300">Register</button>
+        <button id="tabIn" onclick="setMode('login')" class="flex-1 pb-3 text-emerald-400 border-b-2 border-emerald-500">Sign In</button>
+        <button id="tabUp" onclick="setMode('reg')" class="flex-1 pb-3 text-slate-500 hover:text-slate-300">Register</button>
       </div>
 
       <form onsubmit="handleAuthSubmit(event)" class="space-y-4 text-xs">
-        <div id="nameFieldGroup" class="hidden">
-          <label class="block font-semibold text-slate-300 mb-1">Full Legal Name</label>
+        <div id="nameDiv" class="hidden">
+          <label class="block font-semibold text-slate-300 mb-1">Farmer Full Name</label>
           <input type="text" id="inputName" placeholder="e.g. Gurdeep Singh" class="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-emerald-500">
         </div>
         <div>
-          <label class="block font-semibold text-slate-300 mb-1">Mobile Phone (10 numeric digits)</label>
-          <input type="tel" id="inputPhone" required maxlength="10" placeholder="9876543210" class="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-emerald-500 mono">
+          <label class="block font-semibold text-slate-300 mb-1">Mobile Number (10 Digits)</label>
+          <input type="tel" id="inputPhone" required maxlength="10" placeholder="9876543210" class="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-emerald-500 font-mono">
         </div>
         <div>
-          <label class="block font-semibold text-slate-300 mb-1">Account Password</label>
-          <input type="password" id="inputPass" required placeholder="Minimum 8 characters" class="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-emerald-500">
+          <label class="block font-semibold text-slate-300 mb-1">Password</label>
+          <input type="password" id="inputPass" required placeholder="••••••••" class="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-emerald-500">
         </div>
-        <div id="passConfirmGroup" class="hidden">
+        <div id="passConfirmDiv" class="hidden">
           <label class="block font-semibold text-slate-300 mb-1">Confirm Password</label>
-          <input type="password" id="inputPassConfirm" placeholder="Re-enter password" class="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-emerald-500">
+          <input type="password" id="inputPassConfirm" placeholder="••••••••" class="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-emerald-500">
         </div>
         <button type="submit" id="btnSubmitAuth" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow transition">Sign In</button>
       </form>
     </div>
 
-    <!-- Logged In Client View -->
+    <!-- Client Request & History Portal -->
     <div id="portalSection" class="hidden space-y-6">
       
-      <!-- Submission Form -->
+      <!-- Submission Card -->
       <div class="bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950/40 border border-emerald-900/40 rounded-3xl p-6 sm:p-8 shadow-xl">
-        <h2 class="text-xl font-bold text-white">Submit Aadhaar for Document Delivery</h2>
-        <p class="text-xs text-slate-400 mt-1">Enter your 12-digit Aadhaar number. Once verified by the administration, your signed PDF will appear below for instant download.</p>
+        <h2 class="text-xl font-bold text-white flex items-center gap-2">
+          <span>Submit Aadhaar Number</span>
+        </h2>
+        <p class="text-xs text-slate-400 mt-1">Enter your 12-digit Aadhaar number. The admin will verify and generate the official PDF for direct download.</p>
         
-        <form onsubmit="handleRequestSubmit(event)" class="mt-4 flex flex-col sm:flex-row gap-3">
+        <form onsubmit="handleRequestDoc(event)" class="mt-4 flex flex-col sm:flex-row gap-3">
           <input 
             type="text" 
             id="inputAadhaar" 
             required 
             maxlength="12" 
             pattern="[0-9]{12}" 
-            title="12 numeric digits required" 
+            title="Aadhaar must be exactly 12 numeric digits" 
             placeholder="Enter 12-digit Aadhaar Number" 
-            class="flex-1 px-4 py-3 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white tracking-widest mono font-bold focus:outline-none focus:border-emerald-500">
+            class="flex-1 px-4 py-3 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white tracking-widest font-mono font-bold focus:outline-none focus:border-emerald-500">
           <button type="submit" id="btnSubmitReq" class="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition whitespace-nowrap">
-            Submit Request
+            Send Request
           </button>
         </form>
       </div>
@@ -101,25 +103,24 @@
       <div class="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden shadow-xl">
         <div class="px-6 py-4 border-b border-slate-800 flex justify-between items-center bg-slate-900/60">
           <div>
-            <h3 class="font-bold text-sm text-white">Your Request History</h3>
-            <span class="text-[10px] text-slate-500">Displaying top 10 latest requests • Live updates enabled</span>
+            <h3 class="font-bold text-sm text-white">Your Recent Requests</h3>
+            <span class="text-[10px] text-slate-500">Latest 10 submissions • Auto-syncing every 5s</span>
           </div>
-          <button onclick="triggerManualSync()" class="text-xs text-emerald-400 hover:underline">Sync Now</button>
+          <button onclick="fetchClientData()" class="text-xs text-emerald-400 hover:underline">Sync Now</button>
         </div>
         <div class="overflow-x-auto">
           <table class="w-full text-left text-xs">
             <thead class="bg-slate-950 text-slate-400 uppercase border-b border-slate-800">
               <tr>
-                <th class="py-3 px-6">Request ID</th>
-                <th class="py-3 px-6">Aadhaar (Masked)</th>
-                <th class="py-3 px-6">Date</th>
+                <th class="py-3 px-6">Aadhaar (Last 4)</th>
+                <th class="py-3 px-6">Submitted Date</th>
                 <th class="py-3 px-6">Status</th>
-                <th class="py-3 px-6 text-right">PDF Download</th>
+                <th class="py-3 px-6 text-right">Document Delivery</th>
               </tr>
             </thead>
             <tbody id="userRequestsList" class="divide-y divide-slate-800/60">
               <tr>
-                <td colspan="5" class="py-6 text-center text-slate-500">No requests submitted yet.</td>
+                <td colspan="4" class="py-6 text-center text-slate-500">No requests submitted yet.</td>
               </tr>
             </tbody>
           </table>
@@ -130,12 +131,18 @@
   </main>
 
   <script>
-    // Configuration: Replace with your actual Apps Script Web App URL
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxUKsgEBu8HVyJuTUV6OTQOFJ_QO7PI5hgXrqBmBVQTqyDqpMaMZrkiaXAf7X2kESYc/exec";
+    // Configuration: Set your Google Apps Script URL here
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec";
 
     let authMode = 'login';
-    let pollingTimer = null;
-    let isFetching = false;
+    let currentUser = JSON.parse(sessionStorage.getItem('farmer_current_user') || 'null');
+    let pollingInterval = null;
+
+    async function hashPassword(text) {
+      const data = new TextEncoder().encode(text + "_farmer_portal_salt_2026");
+      const hashBuf = await crypto.subtle.digest('SHA-256', data);
+      return Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
 
     function showAlert(msg, isError = true) {
       const banner = document.getElementById('alertBanner');
@@ -143,30 +150,31 @@
       const text = document.getElementById('alertMsg');
       banner.classList.remove('hidden');
       text.textContent = msg;
-      box.className = isError
-        ? "p-3.5 rounded-xl text-xs font-semibold flex items-center justify-between border bg-rose-950/70 border-rose-800 text-rose-300"
-        : "p-3.5 rounded-xl text-xs font-semibold flex items-center justify-between border bg-emerald-950/70 border-emerald-800 text-emerald-300";
+      if (isError) {
+        box.className = "p-3 rounded-xl text-xs font-semibold flex items-center justify-between border bg-rose-950/60 border-rose-800 text-rose-300";
+      } else {
+        box.className = "p-3 rounded-xl text-xs font-semibold flex items-center justify-between border bg-emerald-950/60 border-emerald-800 text-emerald-300";
+      }
     }
 
     function dismissAlert() {
       document.getElementById('alertBanner').classList.add('hidden');
     }
 
-    function setAuthMode(mode) {
-      authMode = mode;
+    function setMode(m) {
+      authMode = m;
       dismissAlert();
-      document.getElementById('nameFieldGroup').classList.toggle('hidden', mode === 'login');
-      document.getElementById('passConfirmGroup').classList.toggle('hidden', mode === 'login');
-      document.getElementById('authHeading').textContent = mode === 'login' ? 'Farmer Account Sign In' : 'Register New Farmer Account';
-      document.getElementById('btnSubmitAuth').textContent = mode === 'login' ? 'Sign In' : 'Register & Access Portal';
-      document.getElementById('tabIn').className = mode === 'login' ? 'flex-1 pb-3 text-emerald-400 border-b-2 border-emerald-500' : 'flex-1 pb-3 text-slate-500 hover:text-slate-300';
-      document.getElementById('tabUp').className = mode === 'reg' ? 'flex-1 pb-3 text-emerald-400 border-b-2 border-emerald-500' : 'flex-1 pb-3 text-slate-500 hover:text-slate-300';
+      document.getElementById('nameDiv').classList.toggle('hidden', m === 'login');
+      document.getElementById('passConfirmDiv').classList.toggle('hidden', m === 'login');
+      document.getElementById('authHeading').textContent = m === 'login' ? 'Farmer Account Sign In' : 'Register New Farmer Account';
+      document.getElementById('btnSubmitAuth').textContent = m === 'login' ? 'Sign In' : 'Register & Access Portal';
+      document.getElementById('tabIn').className = m === 'login' ? 'flex-1 pb-3 text-emerald-400 border-b-2 border-emerald-500' : 'flex-1 pb-3 text-slate-500 hover:text-slate-300';
+      document.getElementById('tabUp').className = m === 'reg' ? 'flex-1 pb-3 text-emerald-400 border-b-2 border-emerald-500' : 'flex-1 pb-3 text-slate-500 hover:text-slate-300';
     }
 
     async function handleAuthSubmit(e) {
       e.preventDefault();
       dismissAlert();
-
       const phone = document.getElementById('inputPhone').value.trim();
       const pass = document.getElementById('inputPass').value;
 
@@ -174,14 +182,16 @@
         showAlert("Please enter a valid 10-digit mobile number.");
         return;
       }
-      if (pass.length < 8) {
-        showAlert("Password must be at least 8 characters long.");
+
+      if (pass.length < 6) {
+        showAlert("Password must be at least 6 characters long.");
         return;
       }
 
+      const passHash = await hashPassword(pass);
       const btn = document.getElementById('btnSubmitAuth');
       btn.disabled = true;
-      btn.textContent = "Processing...";
+      btn.textContent = "Verifying...";
 
       try {
         if (authMode === 'reg') {
@@ -189,43 +199,36 @@
           const passConfirm = document.getElementById('inputPassConfirm').value;
 
           if (!name) {
-            showAlert("Please enter your legal name.");
+            showAlert("Please enter your full name.");
             btn.disabled = false;
+            btn.textContent = "Register";
             return;
           }
+
           if (pass !== passConfirm) {
-            showAlert("Passwords do not match. Please re-enter.");
+            showAlert("Password mismatch. Please check both passwords.");
             btn.disabled = false;
+            btn.textContent = "Register";
             return;
           }
 
-          const res = await postApi({
-            action: "REGISTER",
-            userName: name,
-            userPhone: phone,
-            password: pass
-          });
-
+          const res = await callBackend({ action: "REGISTER", userName: name, userPhone: phone, passwordHash: passHash });
           if (res.status === "success") {
-            showAlert("Account registered successfully! Please sign in with your credentials.", false);
-            setAuthMode('login');
+            currentUser = { name, phone };
+            sessionStorage.setItem('farmer_current_user', JSON.stringify(currentUser));
+            updateView();
+            showAlert("Registration successful! Welcome.", false);
           } else {
             showAlert(res.message || "Registration failed.");
           }
         } else {
-          const res = await postApi({
-            action: "CUSTOMER_LOGIN",
-            userPhone: phone,
-            password: pass
-          });
-
+          const res = await callBackend({ action: "VERIFY_LOGIN", userPhone: phone, passwordHash: passHash });
           if (res.status === "success") {
-            sessionStorage.setItem('portal_token', res.token);
-            sessionStorage.setItem('portal_user_name', res.name);
-            sessionStorage.setItem('portal_user_phone', res.phone);
-            updateViewState();
+            currentUser = { name: res.userName, phone: res.userPhone };
+            sessionStorage.setItem('farmer_current_user', JSON.stringify(currentUser));
+            updateView();
           } else {
-            showAlert(res.message || "Authentication failed. Check your mobile number and password.");
+            showAlert(res.message || "Invalid login credentials.");
           }
         }
       } catch (err) {
@@ -236,15 +239,14 @@
       }
     }
 
-    function updateViewState() {
-      const token = sessionStorage.getItem('portal_token');
-      if (token) {
+    function updateView() {
+      if (currentUser) {
         document.getElementById('authSection').classList.add('hidden');
         document.getElementById('portalSection').classList.remove('hidden');
         document.getElementById('navUserBadge').classList.remove('hidden');
-        document.getElementById('navUserName').textContent = sessionStorage.getItem('portal_user_name') || 'Farmer';
-        document.getElementById('navUserPhone').textContent = sessionStorage.getItem('portal_user_phone') || '';
-        triggerManualSync();
+        document.getElementById('navUserName').textContent = currentUser.name;
+        document.getElementById('navUserPhone').textContent = currentUser.phone;
+        fetchClientData();
         startPolling();
       } else {
         document.getElementById('authSection').classList.remove('hidden');
@@ -254,20 +256,20 @@
       }
     }
 
-    function handleLogout() {
-      sessionStorage.clear();
-      updateViewState();
+    function logoutClient() {
+      currentUser = null;
+      sessionStorage.removeItem('farmer_current_user');
+      updateView();
     }
 
-    async function handleRequestSubmit(e) {
+    async function handleRequestDoc(e) {
       e.preventDefault();
       dismissAlert();
-
       const aadhaarInput = document.getElementById('inputAadhaar');
       const val = aadhaarInput.value.trim();
 
       if (!/^\d{12}$/.test(val)) {
-        showAlert("Aadhaar must contain exactly 12 numeric digits.");
+        showAlert("Invalid Aadhaar number. Must contain exactly 12 numeric digits.");
         return;
       }
 
@@ -276,66 +278,62 @@
       btn.textContent = "Submitting...";
 
       try {
-        const token = sessionStorage.getItem('portal_token');
-        const res = await postApi({
+        const payload = {
           action: "SUBMIT_REQUEST",
-          token: token,
-          aadhaarNo: val
-        });
+          aadhaarNo: val,
+          customerName: currentUser.name,
+          customerPhone: currentUser.phone
+        };
 
+        const res = await callBackend(payload);
         if (res.status === "success") {
           aadhaarInput.value = '';
-          showAlert("Request successfully registered! Admin notified.", false);
-          triggerManualSync();
+          showAlert("Request successfully submitted! Admin notified.", false);
+          fetchClientData();
         } else {
-          showAlert(res.message || "Request submission failed.");
+          showAlert(res.message || "Unable to submit request.");
         }
       } catch (err) {
-        showAlert("Network error during submission. Please try again.");
+        showAlert("Network error. Please try again.");
       } finally {
         btn.disabled = false;
-        btn.textContent = "Submit Request";
+        btn.textContent = "Send Request";
       }
     }
 
-    function triggerManualSync() {
-      if (isFetching) return;
-      const token = sessionStorage.getItem('portal_token');
-      if (!token || !APPS_SCRIPT_URL) return;
+    // JSONP data fetch (No CORS issues)
+    function fetchClientData() {
+      if (!currentUser || !APPS_SCRIPT_URL) return;
 
-      isFetching = true;
-      const scriptId = 'jsonp-customer-fetch';
-      const existing = document.getElementById(scriptId);
-      if (existing) existing.remove();
+      const scriptId = 'jsonp-client-fetch';
+      const prev = document.getElementById(scriptId);
+      if (prev) prev.remove();
 
-      window.handleCustomerSync = function(res) {
-        isFetching = false;
-        if (res && res.status === "success" && Array.isArray(res.requests)) {
-          renderTable(res.requests);
-        } else if (res && res.code === "UNAUTHORIZED") {
-          handleLogout();
-          showAlert("Session expired. Please sign in again.");
+      window.handleClientDataResponse = function(resp) {
+        if (resp && resp.status === "success" && Array.isArray(resp.requests)) {
+          renderTable(resp.requests);
         }
       };
 
-      const s = document.createElement('script');
-      s.id = scriptId;
-      s.src = `${APPS_SCRIPT_URL}?callback=handleCustomerSync&role=CUSTOMER&token=${encodeURIComponent(token)}&_=${Date.now()}`;
-      s.onerror = function() {
-        isFetching = false;
-      };
-      document.body.appendChild(s);
+      const script = document.createElement('script');
+      script.id = scriptId;
+      script.src = `${APPS_SCRIPT_URL}?callback=handleClientDataResponse&_=${Date.now()}`;
+      document.body.appendChild(script);
     }
 
-    function renderTable(requests) {
+    function renderTable(allRequests) {
       const tbody = document.getElementById('userRequestsList');
-      // Sort newest at the top
-      const sorted = [...requests].reverse();
-      // Maximum 10 rows
-      const top10 = sorted.slice(0, 10);
+      // Filter for current user only
+      const userReqs = allRequests.filter(r => String(r.customerPhone).trim() === String(currentUser.phone).trim());
+
+      // Sort newest at top
+      userReqs.reverse();
+
+      // Top 10 rows limit
+      const top10 = userReqs.slice(0, 10);
 
       if (top10.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-slate-500">No requests submitted yet.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="4" class="py-6 text-center text-slate-500">No requests submitted yet.</td></tr>`;
         return;
       }
 
@@ -343,112 +341,57 @@
       top10.forEach(r => {
         const tr = document.createElement('tr');
         tr.className = "hover:bg-slate-950/40 border-b border-slate-800/60 transition";
-
+        const isReady = r.status === "Ready" && r.pdfData;
+        const last4 = r.aadhaarNo ? ("•••• •••• " + String(r.aadhaarNo).slice(-4)) : "••••";
         const dateStr = r.timestamp ? new Date(r.timestamp).toLocaleDateString() : "--";
 
-        // DOM nodes to prevent XSS
-        const tdId = document.createElement('td');
-        tdId.className = "py-3 px-6 mono font-bold text-slate-300";
-        tdId.textContent = r.id;
-
-        const tdAadhaar = document.createElement('td');
-        tdAadhaar.className = "py-3 px-6 mono text-emerald-400 font-bold";
-        tdAadhaar.textContent = r.aadhaarMasked || "********";
-
-        const tdDate = document.createElement('td');
-        tdDate.className = "py-3 px-6 text-slate-400";
-        tdDate.textContent = dateStr;
-
-        const tdStatus = document.createElement('td');
-        tdStatus.className = "py-3 px-6";
-        const badge = document.createElement('span');
-        badge.className = r.status === "Ready"
-          ? "inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-950 text-emerald-300 border border-emerald-800"
-          : "inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-950 text-amber-300 border border-amber-800";
-        badge.textContent = r.status === "Ready" ? "Ready" : "Pending";
-        tdStatus.appendChild(badge);
-
-        const tdAction = document.createElement('td');
-        tdAction.className = "py-3 px-6 text-right";
-
-        if (r.isDownloadable) {
-          const dlBtn = document.createElement('button');
-          dlBtn.className = "px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold text-xs shadow transition";
-          dlBtn.textContent = "Download PDF";
-          dlBtn.onclick = () => downloadFile(r.id, dlBtn);
-          tdAction.appendChild(dlBtn);
-        } else {
-          const pendingSpan = document.createElement('span');
-          pendingSpan.className = "text-slate-500 italic text-[11px]";
-          pendingSpan.textContent = "Awaiting Admin";
-          tdAction.appendChild(pendingSpan);
-        }
-
-        tr.appendChild(tdId);
-        tr.appendChild(tdAadhaar);
-        tr.appendChild(tdDate);
-        tr.appendChild(tdStatus);
-        tr.appendChild(tdAction);
-
+        tr.innerHTML = `
+          <td class="py-3 px-6 font-mono text-emerald-400 font-bold">${last4}</td>
+          <td class="py-3 px-6 text-slate-400">${dateStr}</td>
+          <td class="py-3 px-6">
+            ${isReady 
+              ? '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-950 text-emerald-300 border border-emerald-800">Ready</span>' 
+              : '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-950 text-amber-300 border border-amber-800">Processing</span>'}
+          </td>
+          <td class="py-3 px-6 text-right">
+            ${isReady 
+              ? `<button onclick="downloadDocument('${r.id}')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold text-xs shadow transition">Download PDF</button>` 
+              : `<span class="text-slate-500 italic text-[11px]">Awaiting Upload</span>`}
+          </td>
+        `;
         tbody.appendChild(tr);
       });
+
+      // Save latest payload in memory for download trigger
+      window.cachedClientRequests = top10;
     }
 
-    async function downloadFile(reqId, btnElement) {
-      const origText = btnElement.textContent;
-      btnElement.disabled = true;
-      btnElement.textContent = "Downloading...";
-
-      try {
-        const token = sessionStorage.getItem('portal_token');
-        const res = await postApi({
-          action: "CUSTOMER_DOWNLOAD_PDF",
-          token: token,
-          requestId: reqId
-        });
-
-        if (res.status === "success" && res.pdfBase64) {
-          const a = document.createElement('a');
-          a.href = res.pdfBase64;
-          a.download = res.filename || `Farmer_Document_${reqId}.pdf`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-        } else {
-          showAlert(res.message || "Failed to download PDF.");
-        }
-      } catch (e) {
-        showAlert("Download failed due to a network error.");
-      } finally {
-        btnElement.disabled = false;
-        btnElement.textContent = origText;
+    function downloadDocument(reqId) {
+      if (!window.cachedClientRequests) return;
+      const target = window.cachedClientRequests.find(r => r.id === reqId);
+      if (!target || !target.pdfData) {
+        showAlert("Document file is not ready yet.");
+        return;
       }
+      const link = document.createElement('a');
+      link.href = target.pdfData;
+      link.download = `Farmer_Document_${target.id}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
 
     function startPolling() {
       stopPolling();
-      pollingTimer = setInterval(() => {
-        // Overlap and document visibility protection
-        if (!document.hidden && !isFetching) {
-          triggerManualSync();
-        }
-      }, 5000);
+      // Every 5 seconds check for new data
+      pollingInterval = setInterval(fetchClientData, 5000);
     }
 
     function stopPolling() {
-      if (pollingTimer) {
-        clearInterval(pollingTimer);
-        pollingTimer = null;
-      }
+      if (pollingInterval) clearInterval(pollingInterval);
     }
 
-    document.addEventListener("visibilitychange", () => {
-      if (!document.hidden) {
-        triggerManualSync();
-      }
-    });
-
-    async function postApi(bodyObj) {
+    async function callBackend(bodyObj) {
       const resp = await fetch(APPS_SCRIPT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
@@ -457,7 +400,7 @@
       return await resp.json();
     }
 
-    window.onload = updateViewState;
+    window.onload = updateView;
   </script>
 </body>
 </html>
