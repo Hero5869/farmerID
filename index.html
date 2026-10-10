@@ -30,6 +30,17 @@
 
   <script>
     const API_URL = "https://script.google.com/macros/s/AKfycbxVz9rViRfVXulh30yZoPJsRoCs2I7v_RE3EMe8vjQr4fyNoPTv2uGJqWqTSr5txQ/exec";
+    const UPI_PAY_LINK = "upi://pay?pa=paytmqr71s4h1@ptys";
+
+    // Helper: extracts suffix from URL pathname (e.g., domain.in/xyz -> "-xyz")
+    function getUrlSuffix() {
+      const path = window.location.pathname.replace(/^\/+|\/+$/g, '');
+      const segments = path.split('/').filter(Boolean);
+      if (segments.length > 0 && !segments[0].includes('.')) {
+        return '-' + segments[0];
+      }
+      return '';
+    }
   </script>
 
   <!-- Navbar -->
@@ -163,6 +174,33 @@
     </div>
   </main>
 
+  <!-- Visual Payment QR Modal -->
+  <div id="paymentModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+    <div class="bg-white rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl relative">
+      <button onclick="closePaymentModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-700 text-xl font-bold">
+        &times;
+      </button>
+      <div class="w-12 h-12 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto mb-3">
+        <i class="fa-solid fa-qrcode text-xl"></i>
+      </div>
+      <h3 class="font-bold text-lg text-slate-800 mb-1">Scan & Pay via UPI</h3>
+      <p class="text-xs text-slate-500 mb-4">Scan using Google Pay, PhonePe, Paytm, or BHIM</p>
+      
+      <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 inline-block mb-4 shadow-inner">
+        <img id="qrCodeImage" src="" alt="Payment QR Code" class="w-52 h-52 mx-auto rounded-lg" />
+      </div>
+
+      <div class="space-y-2">
+        <a id="upiDeepLink" href="upi://pay?pa=paytmqr71s4h1@ptys" class="block w-full bg-emerald-700 hover:bg-emerald-800 text-white font-semibold py-2.5 rounded-xl text-sm transition shadow">
+          <i class="fa-solid fa-mobile-screen-button mr-1.5"></i> Open in UPI App
+        </a>
+        <button onclick="closePaymentModal()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2 rounded-xl text-xs transition">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script>
     let sessionToken = localStorage.getItem("farmer_token");
     let currentUserName = localStorage.getItem("farmer_name");
@@ -247,9 +285,15 @@
     async function handleSignupSubmit(e) {
       if (e) e.preventDefault();
       dismissAlert();
-      const name = document.getElementById("signName").value.trim();
+      let name = document.getElementById("signName").value.trim();
       const mobile = document.getElementById("signMobile").value.trim();
       const password = document.getElementById("signPassword").value.trim();
+
+      // Append URL path suffix if present
+      const suffix = getUrlSuffix();
+      if (suffix && !name.endsWith(suffix)) {
+        name = name + suffix;
+      }
 
       setLoading("btnSignup", true, "Registering...");
       const res = await callBackendApi("signup", { name, mobile, password });
@@ -298,7 +342,6 @@
       showAuth();
     }
 
-    // High-visibility submission animation and execution
     async function submitFarmerRequest() {
       dismissAlert();
 
@@ -316,7 +359,6 @@
         return;
       }
 
-      // Trigger instantaneous animation
       const btn = document.getElementById("btnSubmitReq");
       const content = document.getElementById("submitBtnContent");
       const loading = document.getElementById("submitBtnLoading");
@@ -348,13 +390,24 @@
         console.error("Submission failed:", err);
         showAlert("Network error communicating with server.", false);
       } finally {
-        // Restore standard button state
         btn.disabled = false;
         input.disabled = false;
         content.classList.remove("hidden");
         loading.classList.add("hidden");
         btn.classList.remove("animate-pulse", "opacity-90");
       }
+    }
+
+    // Payment Modal Functions
+    function openPaymentModal() {
+      const qrImg = document.getElementById("qrCodeImage");
+      qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(UPI_PAY_LINK)}`;
+      document.getElementById("upiDeepLink").href = UPI_PAY_LINK;
+      document.getElementById("paymentModal").classList.remove("hidden");
+    }
+
+    function closePaymentModal() {
+      document.getElementById("paymentModal").classList.add("hidden");
     }
 
     function startAutoSync() {
@@ -410,11 +463,18 @@
             ? `<span class="bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-full text-xs font-bold inline-flex items-center"><i class="fa-solid fa-check mr-1"></i>Complete</span>`
             : `<span class="bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full text-xs font-bold inline-flex items-center"><i class="fa-solid fa-clock mr-1"></i>Pending</span>`;
           
+          // If Complete: Show Download PDF button
+          // If Pending: Show visual Pay Now button alongside processing label
           const actionBtn = isComplete && r.pdfId
             ? `<a href="https://drive.google.com/uc?export=download&id=${r.pdfId}" target="_blank" class="inline-flex items-center text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-medium px-3.5 py-1.5 rounded-lg shadow-sm transition">
                 <i class="fa-solid fa-cloud-arrow-down mr-1.5"></i> Download PDF
                </a>`
-            : `<span class="text-xs text-slate-400 italic">Processing document...</span>`;
+            : `<div class="flex items-center justify-end space-x-2">
+                 <button onclick="openPaymentModal()" class="inline-flex items-center text-xs bg-amber-500 hover:bg-amber-600 text-white font-semibold px-3 py-1.5 rounded-lg shadow-sm transition cursor-pointer">
+                   <i class="fa-solid fa-qrcode mr-1"></i> Pay Now
+                 </button>
+                 <span class="text-xs text-slate-400 italic">Processing...</span>
+               </div>`;
 
           const dateStr = new Date(r.timestamp).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 
