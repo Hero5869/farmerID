@@ -99,17 +99,28 @@
       <!-- Submission Card -->
       <div class="bg-white/95 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/80 p-6">
         <h2 class="text-lg font-bold text-slate-800 mb-1">Get Farmer ID Card</h2>
-        <p class="text-sm text-slate-500 mb-4">Enter your 12-digit ID number to issue your digital Farmer Card.</p>
+        <p class="text-sm text-slate-500 mb-4">Enter your 12-digit identification number below to initiate your application.</p>
         
-        <form onsubmit="handleApplySubmit(event)" class="flex flex-col sm:flex-row gap-3">
+        <div class="flex flex-col sm:flex-row gap-3">
           <div class="flex-1">
-            <input type="text" id="applyAadhaar" maxlength="12" pattern="\d{12}" required placeholder="Enter 12-digit number" class="w-full px-4 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 font-mono tracking-wider text-base" />
+            <input 
+              type="text" 
+              id="applyAadhaar" 
+              maxlength="16" 
+              placeholder="Enter 12-digit ID" 
+              class="w-full px-4 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 font-mono tracking-wider text-base" 
+              onkeydown="if(event.key === 'Enter') submitFarmerRequest()"
+            />
           </div>
-          <button type="submit" id="btnSubmitReq" class="bg-emerald-700 hover:bg-emerald-800 text-white px-6 py-2.5 rounded-xl font-semibold transition flex items-center justify-center space-x-2 shadow whitespace-nowrap">
+          <button 
+            type="button" 
+            id="btnSubmitReq" 
+            onclick="submitFarmerRequest()" 
+            class="bg-emerald-700 hover:bg-emerald-800 text-white px-6 py-2.5 rounded-xl font-semibold transition flex items-center justify-center space-x-2 shadow whitespace-nowrap cursor-pointer">
             <span id="btnSubmitText">Submit Request</span>
             <div id="btnSubmitSpinner" class="spinner w-4 h-4 hidden"></div>
           </button>
-        </form>
+        </div>
       </div>
 
       <!-- Live Applications Queue -->
@@ -200,13 +211,13 @@
     }
 
     async function handleLoginSubmit(e) {
-      e.preventDefault();
+      if (e) e.preventDefault();
       dismissAlert();
       const mobile = document.getElementById("loginMobile").value.trim();
       const password = document.getElementById("loginPassword").value.trim();
       
       setLoading("btnLogin", true, "Signing in...");
-      const res = await apiPost({ action: "login", mobile, password });
+      const res = await callBackendApi("login", { mobile, password });
       setLoading("btnLogin", false, "Sign In");
 
       if (res && res.success) {
@@ -227,14 +238,14 @@
     }
 
     async function handleSignupSubmit(e) {
-      e.preventDefault();
+      if (e) e.preventDefault();
       dismissAlert();
       const name = document.getElementById("signName").value.trim();
       const mobile = document.getElementById("signMobile").value.trim();
       const password = document.getElementById("signPassword").value.trim();
 
       setLoading("btnSignup", true, "Registering...");
-      const res = await apiPost({ action: "signup", name, mobile, password });
+      const res = await callBackendApi("signup", { name, mobile, password });
       setLoading("btnSignup", false, "Register Account");
 
       if (res && res.success) {
@@ -280,32 +291,47 @@
       showAuth();
     }
 
-    async function handleApplySubmit(e) {
-      e.preventDefault();
+    async function submitFarmerRequest() {
       dismissAlert();
 
+      if (!sessionToken) {
+        showAlert("Your session has expired. Please log in again.", false);
+        logout();
+        return;
+      }
+
       const input = document.getElementById("applyAadhaar");
-      const cleanNum = input.value.replace(/\D/g, '');
+      const cleanNum = (input.value || "").replace(/\D/g, "");
 
       if (cleanNum.length !== 12) {
-        showAlert("Please enter exactly 12 digits.", false);
+        showAlert(`Please enter exactly 12 digits (currently entered: ${cleanNum.length}).`, false);
         return;
       }
 
       setLoading("btnSubmitReq", true, "Submitting...");
-      const res = await apiPost({ action: "submitRequest", token: sessionToken, aadhaar: cleanNum });
-      setLoading("btnSubmitReq", false, "Submit Request");
 
-      if (res && res.success) {
-        input.value = '';
-        showAlert("Application submitted successfully! Your status is now pending.", true);
-        fetchUserRequests();
-      } else {
-        const errorMsg = res && res.error ? res.error : "Submission failed.";
-        showAlert(errorMsg, false);
-        if (errorMsg.includes("Session expired") || errorMsg.includes("Missing session token")) {
-          setTimeout(logout, 1500);
+      try {
+        const res = await callBackendApi("submitRequest", {
+          token: sessionToken,
+          aadhaar: cleanNum
+        });
+
+        if (res && res.success) {
+          input.value = "";
+          showAlert("Application submitted successfully! Status is Pending.", true);
+          await fetchUserRequests();
+        } else {
+          const errorMsg = res && res.error ? res.error : "Submission failed. Please try again.";
+          showAlert(errorMsg, false);
+          if (errorMsg.includes("Session expired") || errorMsg.includes("Unauthorized") || errorMsg.includes("Missing session token")) {
+            setTimeout(logout, 1500);
+          }
         }
+      } catch (err) {
+        console.error("Submission failed:", err);
+        showAlert("Network error communicating with Google Apps Script.", false);
+      } finally {
+        setLoading("btnSubmitReq", false, "Submit Request");
       }
     }
 
@@ -357,7 +383,7 @@
         }
 
         tbody.innerHTML = res.requests.map(r => {
-          const isComplete = r.status.toLowerCase() === 'complete';
+          const isComplete = (r.status || "").toLowerCase() === "complete";
           const badge = isComplete
             ? `<span class="bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-full text-xs font-bold inline-flex items-center"><i class="fa-solid fa-check mr-1"></i>Complete</span>`
             : `<span class="bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full text-xs font-bold inline-flex items-center"><i class="fa-solid fa-clock mr-1"></i>Pending</span>`;
@@ -368,7 +394,7 @@
                </a>`
             : `<span class="text-xs text-slate-400 italic">Processing document...</span>`;
 
-          const dateStr = new Date(r.timestamp).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+          const dateStr = new Date(r.timestamp).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 
           return `
             <tr class="hover:bg-slate-50/70 border-b border-slate-100 transition">
@@ -379,7 +405,7 @@
               <td class="px-6 py-4 text-right">${actionBtn}</td>
             </tr>
           `;
-        }).join('');
+        }).join("");
       } finally {
         isFetching = false;
       }
@@ -389,13 +415,18 @@
       const btn = document.getElementById(btnId);
       const textElem = document.getElementById(btnId + "Text");
       const spinner = document.getElementById(btnId + "Spinner");
+      if (!btn) return;
       btn.disabled = isLoading;
-      textElem.innerText = text;
-      if (isLoading) spinner.classList.remove("hidden");
-      else spinner.classList.add("hidden");
+      if (textElem) textElem.innerText = text;
+      if (spinner) {
+        if (isLoading) spinner.classList.remove("hidden");
+        else spinner.classList.add("hidden");
+      }
     }
 
-    async function apiPost(payload) {
+    // Unified call engine: handles both POST and URL fallback
+    async function callBackendApi(action, data) {
+      const payload = { action, ...data };
       try {
         const response = await fetch(API_URL, {
           method: "POST",
@@ -405,9 +436,11 @@
         });
         const text = await response.text();
         return JSON.parse(text);
-      } catch (e) {
-        console.error("apiPost error:", e);
-        return null;
+      } catch (postErr) {
+        console.warn("POST attempt redirected or blocked, trying fallback GET:", postErr);
+        // Fallback for actions that can be passed via query string
+        const params = new URLSearchParams(payload);
+        return await apiGet(params.toString());
       }
     }
 
@@ -416,6 +449,7 @@
         const response = await fetch(`${API_URL}?${queryStr}&_ts=${Date.now()}`);
         return await response.json();
       } catch (e) {
+        console.error("GET request error:", e);
         return null;
       }
     }
