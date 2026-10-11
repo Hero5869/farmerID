@@ -188,7 +188,7 @@
     </div>
   </main>
 
-  <!-- Automated Payment Verification Modal -->
+  <!-- Payment Modal -->
   <div id="paymentModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
     <div class="bg-white rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl relative">
       <button onclick="closePaymentModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-700 text-xl font-bold">
@@ -198,7 +198,7 @@
         <i class="fa-solid fa-qrcode text-xl"></i>
       </div>
       <h3 class="font-bold text-lg text-slate-800 mb-0.5">Complete Payment</h3>
-      <p class="text-xs text-slate-500 mb-2">Scan with Google Pay, PhonePe, Paytm, or BHIM</p>
+      <p class="text-xs text-slate-500 mb-2">Scan with Paytm, PhonePe, GPay, or BHIM</p>
       
       <div class="inline-flex items-center px-3 py-1 rounded-full text-xs font-mono font-medium text-amber-700 bg-amber-50 border border-amber-200 mb-3">
         <i class="fa-regular fa-clock mr-1.5 text-amber-600"></i>
@@ -209,15 +209,28 @@
         <img id="qrCodeImage" src="" alt="Payment QR Code" class="w-48 h-48 mx-auto rounded-lg" />
       </div>
 
+      <!-- Action Buttons -->
       <div class="space-y-2">
-        <a id="upiDeepLink" href="#" class="block w-full bg-emerald-700 hover:bg-emerald-800 text-white font-semibold py-2.5 rounded-xl text-sm transition shadow">
-          <i class="fa-solid fa-mobile-screen-button mr-1.5"></i> Open in UPI App
-        </a>
-
-        <button id="btnCompletePayment" onclick="startPaymentVerification()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-xl text-sm transition shadow flex items-center justify-center space-x-2">
+        <button id="btnCompletePayment" onclick="startPaymentVerification()" class="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-semibold py-2.5 rounded-xl text-sm transition shadow flex items-center justify-center space-x-2">
           <span id="completeBtnText">I Have Completed the Payment</span>
           <div id="completeBtnSpinner" class="custom-spin w-4 h-4 hidden"></div>
         </button>
+
+        <button type="button" onclick="toggleCodeInput()" class="w-full bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold py-2 rounded-xl text-xs transition border border-indigo-200 flex items-center justify-center space-x-1">
+          <i class="fa-solid fa-key text-xs"></i>
+          <span>Pay with Code</span>
+        </button>
+
+        <!-- Code Input Drawer -->
+        <div id="codeInputDrawer" class="hidden pt-2 border-t border-slate-100 space-y-2">
+          <div class="flex gap-2">
+            <input type="text" id="bypassCodeInput" maxlength="6" placeholder="Enter 6-digit code" class="flex-1 px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-mono uppercase tracking-wider outline-none focus:border-indigo-500" />
+            <button onclick="submitBypassCode()" id="btnSubmitCode" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition">
+              Verify
+            </button>
+          </div>
+          <p id="codeError" class="text-[11px] text-red-500 hidden text-left"></p>
+        </div>
 
         <button onclick="closePaymentModal()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium py-1.5 rounded-xl text-xs transition">
           Cancel
@@ -445,20 +458,62 @@
       document.getElementById("completeBtnText").innerText = "I Have Completed the Payment";
       document.getElementById("btnCompletePayment").disabled = false;
       document.getElementById("completeBtnSpinner").classList.add("hidden");
+      document.getElementById("codeInputDrawer").classList.add("hidden");
+      document.getElementById("bypassCodeInput").value = "";
+      document.getElementById("codeError").classList.add("hidden");
 
       const res = await apiGet(`action=createPaymentIntent&token=${encodeURIComponent(sessionToken)}&reqId=${encodeURIComponent(reqId)}`);
 
       if (res && res.success) {
         activeOrderId = res.orderId;
         const upiLink = res.upiLink;
-
         document.getElementById("qrCodeImage").src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiLink)}`;
-        document.getElementById("upiDeepLink").href = upiLink;
-
         startPaymentTimer();
       } else {
         alert("Unable to generate payment session. Please try again.");
         closePaymentModal();
+      }
+    }
+
+    function toggleCodeInput() {
+      const drawer = document.getElementById("codeInputDrawer");
+      drawer.classList.toggle("hidden");
+    }
+
+    async function submitBypassCode() {
+      const codeInput = document.getElementById("bypassCodeInput");
+      const errEl = document.getElementById("codeError");
+      const codeVal = (codeInput.value || "").trim().toUpperCase();
+
+      if (codeVal.length < 4) {
+        errEl.innerText = "Please enter a valid code.";
+        errEl.classList.remove("hidden");
+        return;
+      }
+
+      const btn = document.getElementById("btnSubmitCode");
+      btn.disabled = true;
+      btn.innerText = "...";
+
+      try {
+        const res = await apiGet(`action=verifyCode&token=${encodeURIComponent(sessionToken)}&reqId=${encodeURIComponent(activePaymentReqId)}&code=${encodeURIComponent(codeVal)}`);
+
+        if (res && res.success && res.verified) {
+          stopPaymentPolling();
+          clearInterval(paymentTimerInterval);
+          closePaymentModal();
+          showAlert("Code accepted! Payment marked as verified.", true);
+          await fetchUserRequests();
+        } else {
+          errEl.innerText = res ? res.error : "Invalid code.";
+          errEl.classList.remove("hidden");
+        }
+      } catch (e) {
+        errEl.innerText = "Error verifying code.";
+        errEl.classList.remove("hidden");
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "Verify";
       }
     }
 
