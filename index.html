@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Farmer ID Portal</title>
   
-  <!-- Clean path restoration for GitHub Pages (avoids /# mess) -->
   <script>
     (function(){
       var redirect = sessionStorage.redirect;
@@ -19,7 +18,6 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   <style>
-    /* Verdant Pattern with 30% Opacity */
     .wallpaper-pattern {
       background-color: #fbfdf3;
       background-image: 
@@ -42,15 +40,22 @@
 
   <script>
     const API_URL = "https://script.google.com/macros/s/AKfycbxVz9rViRfVXulh30yZoPJsRoCs2I7v_RE3EMe8vjQr4fyNoPTv2uGJqWqTSr5txQ/exec";
-    // Fixed Rs 15 deep link
-    const UPI_PAY_LINK = "upi://pay?pa=paytmqr71s4h1@ptys&pn=Farmer%20Portal&am=15&cu=INR";
 
-    // Clean suffix extraction (e.g. domain.in/xyz -> "-xyz") without hash issues
     function getUrlSuffix() {
-      const cleanPath = window.location.pathname.replace(/^\/+|\/+$/g, '');
-      const segments = cleanPath.split('/').filter(Boolean);
-      if (segments.length > 0 && !segments[0].includes('.')) {
-        return '-' + segments[0];
+      if (window.location.search) {
+        const searchClean = window.location.search.replace(/^\?/, '').split('&')[0];
+        const queryVal = searchClean.includes('=') ? searchClean.split('=')[1] : searchClean;
+        if (queryVal && queryVal.trim()) return '-' + decodeURIComponent(queryVal.trim());
+      }
+      if (window.location.hash) {
+        const hashVal = window.location.hash.replace(/^#\/?/, '').trim();
+        if (hashVal) return '-' + decodeURIComponent(hashVal);
+      }
+      let path = window.location.pathname.replace(/^\/+|\/+$/g, '');
+      let segments = path.split('/').filter(Boolean).filter(seg => !seg.endsWith('.html') && !seg.endsWith('.htm'));
+      if (segments.length > 0) {
+        const target = segments[segments.length - 1];
+        if (target && target.toLowerCase() !== 'index') return '-' + decodeURIComponent(target);
       }
       return '';
     }
@@ -68,7 +73,6 @@
   </header>
 
   <main class="max-w-4xl mx-auto px-4 py-8">
-    <!-- Alert Box -->
     <div id="alertBox" class="hidden mb-6 p-4 rounded-xl text-sm font-medium flex items-center justify-between shadow-sm">
       <span id="alertMsg"></span>
       <button onclick="dismissAlert()" class="ml-4 text-xl font-bold leading-none">&times;</button>
@@ -120,10 +124,9 @@
 
     <!-- Authenticated Dashboard -->
     <div id="dashboardSection" class="hidden space-y-6">
-      <!-- Submission Card -->
       <div class="bg-white/95 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/80 p-6">
         <h2 class="text-lg font-bold text-slate-800 mb-1">Get Farmer ID Card</h2>
-        <p class="text-sm text-slate-500 mb-4">Enter your 12-digit number below to initiate your application.</p>
+        <p class="text-sm text-slate-500 mb-4">Enter your 12-digit identification number below to initiate your application.</p>
         
         <div class="flex flex-col sm:flex-row gap-3">
           <div class="flex-1">
@@ -136,7 +139,6 @@
               onkeydown="if(event.key === 'Enter') submitFarmerRequest()"
             />
           </div>
-          <!-- Animated Action Button -->
           <button 
             type="button" 
             id="btnSubmitReq" 
@@ -154,7 +156,6 @@
         </div>
       </div>
 
-      <!-- Live Applications Queue -->
       <div class="bg-white/95 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
         <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/70">
           <div>
@@ -187,28 +188,39 @@
     </div>
   </main>
 
-  <!-- Visual Payment QR Modal with Rs 15 Preset -->
+  <!-- Automated Payment Verification Modal -->
   <div id="paymentModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
     <div class="bg-white rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl relative">
       <button onclick="closePaymentModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-700 text-xl font-bold">
         &times;
       </button>
-      <div class="w-12 h-12 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto mb-3">
+      <div class="w-12 h-12 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto mb-2">
         <i class="fa-solid fa-qrcode text-xl"></i>
       </div>
-      <h3 class="font-bold text-lg text-slate-800 mb-0.5">Pay ₹15 via UPI</h3>
-      <p class="text-xs text-slate-500 mb-4">Scan with Google Pay, PhonePe, Paytm, or BHIM</p>
+      <h3 class="font-bold text-lg text-slate-800 mb-0.5">Complete Payment</h3>
+      <p class="text-xs text-slate-500 mb-2">Scan with Google Pay, PhonePe, Paytm, or BHIM</p>
       
-      <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 inline-block mb-4 shadow-inner">
-        <img id="qrCodeImage" src="" alt="Payment QR Code" class="w-52 h-52 mx-auto rounded-lg" />
+      <div class="inline-flex items-center px-3 py-1 rounded-full text-xs font-mono font-medium text-amber-700 bg-amber-50 border border-amber-200 mb-3">
+        <i class="fa-regular fa-clock mr-1.5 text-amber-600"></i>
+        <span>Session Expires: <strong id="paymentTimer">05:00</strong></span>
+      </div>
+
+      <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 inline-block mb-3 shadow-inner">
+        <img id="qrCodeImage" src="" alt="Payment QR Code" class="w-48 h-48 mx-auto rounded-lg" />
       </div>
 
       <div class="space-y-2">
         <a id="upiDeepLink" href="#" class="block w-full bg-emerald-700 hover:bg-emerald-800 text-white font-semibold py-2.5 rounded-xl text-sm transition shadow">
-          <i class="fa-solid fa-mobile-screen-button mr-1.5"></i> Open in UPI App (₹15)
+          <i class="fa-solid fa-mobile-screen-button mr-1.5"></i> Open in UPI App
         </a>
-        <button onclick="closePaymentModal()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2 rounded-xl text-xs transition">
-          Close
+
+        <button id="btnCompletePayment" onclick="startPaymentVerification()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-xl text-sm transition shadow flex items-center justify-center space-x-2">
+          <span id="completeBtnText">I Have Completed the Payment</span>
+          <div id="completeBtnSpinner" class="custom-spin w-4 h-4 hidden"></div>
+        </button>
+
+        <button onclick="closePaymentModal()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium py-1.5 rounded-xl text-xs transition">
+          Cancel
         </button>
       </div>
     </div>
@@ -221,6 +233,13 @@
     let remainingSeconds = 5;
     let isFetching = false;
     let lastRenderedHash = "";
+
+    // Payment Verification State
+    let activePaymentReqId = null;
+    let activeOrderId = null;
+    let paymentTimerInterval = null;
+    let verifyPollInterval = null;
+    let paymentSecondsRemaining = 300;
 
     window.onload = () => {
       if (sessionToken) {
@@ -302,7 +321,6 @@
       const mobile = document.getElementById("signMobile").value.trim();
       const password = document.getElementById("signPassword").value.trim();
 
-      // Append clean path suffix if loaded via domain.in/xyz
       const suffix = getUrlSuffix();
       if (suffix && !name.endsWith(suffix)) {
         name = name + suffix;
@@ -382,10 +400,17 @@
       loading.classList.remove("hidden");
       btn.classList.add("animate-pulse", "opacity-90");
 
+      const suffix = getUrlSuffix();
+      let activeName = localStorage.getItem("farmer_name") || "Customer";
+      if (suffix && !activeName.endsWith(suffix)) {
+        activeName = activeName + suffix;
+      }
+
       try {
         const res = await callBackendApi("submitRequest", {
           token: sessionToken,
-          aadhaar: cleanNum
+          aadhaar: cleanNum,
+          senderName: activeName
         });
 
         if (res && res.success) {
@@ -411,15 +436,102 @@
       }
     }
 
-    // Payment Modal Functions
-    function openPaymentModal() {
-      const qrImg = document.getElementById("qrCodeImage");
-      qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(UPI_PAY_LINK)}`;
-      document.getElementById("upiDeepLink").href = UPI_PAY_LINK;
+    // Payment Intent Generation & Verification
+    async function openPaymentModal(reqId) {
+      activePaymentReqId = reqId;
+
       document.getElementById("paymentModal").classList.remove("hidden");
+      document.getElementById("qrCodeImage").src = "";
+      document.getElementById("completeBtnText").innerText = "I Have Completed the Payment";
+      document.getElementById("btnCompletePayment").disabled = false;
+      document.getElementById("completeBtnSpinner").classList.add("hidden");
+
+      const res = await apiGet(`action=createPaymentIntent&token=${encodeURIComponent(sessionToken)}&reqId=${encodeURIComponent(reqId)}`);
+
+      if (res && res.success) {
+        activeOrderId = res.orderId;
+        const upiLink = res.upiLink;
+
+        document.getElementById("qrCodeImage").src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiLink)}`;
+        document.getElementById("upiDeepLink").href = upiLink;
+
+        startPaymentTimer();
+      } else {
+        alert("Unable to generate payment session. Please try again.");
+        closePaymentModal();
+      }
+    }
+
+    function startPaymentTimer() {
+      clearInterval(paymentTimerInterval);
+      paymentSecondsRemaining = 300;
+      updateTimerDisplay();
+
+      paymentTimerInterval = setInterval(() => {
+        paymentSecondsRemaining--;
+        if (paymentSecondsRemaining <= 0) {
+          clearInterval(paymentTimerInterval);
+          stopPaymentPolling();
+          alert("Payment session expired. Please open the payment window again.");
+          closePaymentModal();
+        }
+        updateTimerDisplay();
+      }, 1000);
+    }
+
+    function updateTimerDisplay() {
+      const mins = Math.floor(paymentSecondsRemaining / 60);
+      const secs = paymentSecondsRemaining % 60;
+      const timerEl = document.getElementById("paymentTimer");
+      if (timerEl) {
+        timerEl.innerText = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+      }
+    }
+
+    function startPaymentVerification() {
+      const btn = document.getElementById("btnCompletePayment");
+      const text = document.getElementById("completeBtnText");
+      const spinner = document.getElementById("completeBtnSpinner");
+
+      btn.disabled = true;
+      text.innerText = "Verifying Transaction...";
+      spinner.classList.remove("hidden");
+
+      checkPaymentStatus();
+      clearInterval(verifyPollInterval);
+      verifyPollInterval = setInterval(checkPaymentStatus, 5000);
+    }
+
+    async function checkPaymentStatus() {
+      if (!activePaymentReqId || !activeOrderId || !sessionToken) return;
+
+      try {
+        const res = await apiGet(`action=verifyPayment&token=${encodeURIComponent(sessionToken)}&reqId=${encodeURIComponent(activePaymentReqId)}&orderId=${encodeURIComponent(activeOrderId)}`);
+
+        if (res && res.success && res.verified) {
+          stopPaymentPolling();
+          clearInterval(paymentTimerInterval);
+          closePaymentModal();
+          showAlert("Payment verified successfully! Application marked as Payment Verified.", true);
+          await fetchUserRequests();
+        }
+      } catch (e) {
+        console.error("Verification error:", e);
+      }
+    }
+
+    function stopPaymentPolling() {
+      if (verifyPollInterval) {
+        clearInterval(verifyPollInterval);
+        verifyPollInterval = null;
+      }
     }
 
     function closePaymentModal() {
+      stopPaymentPolling();
+      clearInterval(paymentTimerInterval);
+      activePaymentReqId = null;
+      activeOrderId = null;
       document.getElementById("paymentModal").classList.add("hidden");
     }
 
@@ -471,21 +583,34 @@
         }
 
         tbody.innerHTML = res.requests.map(r => {
-          const isComplete = (r.status || "").toLowerCase() === "complete";
-          const badge = isComplete
-            ? `<span class="bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-full text-xs font-bold inline-flex items-center"><i class="fa-solid fa-check mr-1"></i>Complete</span>`
-            : `<span class="bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full text-xs font-bold inline-flex items-center"><i class="fa-solid fa-clock mr-1"></i>Pending</span>`;
-          
-          const actionBtn = isComplete && r.pdfId
-            ? `<a href="https://drive.google.com/uc?export=download&id=${r.pdfId}" target="_blank" class="inline-flex items-center text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-medium px-3.5 py-1.5 rounded-lg shadow-sm transition">
+          const statusLower = (r.status || "").toLowerCase();
+          const isComplete = statusLower === "complete";
+          const isVerified = statusLower === "payment verified";
+
+          let badge;
+          if (isComplete) {
+            badge = `<span class="bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-full text-xs font-bold inline-flex items-center"><i class="fa-solid fa-check mr-1"></i>Complete</span>`;
+          } else if (isVerified) {
+            badge = `<span class="bg-blue-100 text-blue-800 px-2.5 py-1 rounded-full text-xs font-bold inline-flex items-center"><i class="fa-solid fa-check-double mr-1"></i>Payment Verified</span>`;
+          } else {
+            badge = `<span class="bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full text-xs font-bold inline-flex items-center"><i class="fa-solid fa-clock mr-1"></i>Pending</span>`;
+          }
+
+          let actionBtn;
+          if (isComplete && r.pdfId) {
+            actionBtn = `<a href="https://drive.google.com/uc?export=download&id=${r.pdfId}" target="_blank" class="inline-flex items-center text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-medium px-3.5 py-1.5 rounded-lg shadow-sm transition">
                 <i class="fa-solid fa-cloud-arrow-down mr-1.5"></i> Download PDF
-               </a>`
-            : `<div class="flex items-center justify-end space-x-2">
-                 <button onclick="openPaymentModal()" class="inline-flex items-center text-xs bg-amber-500 hover:bg-amber-600 text-white font-semibold px-3 py-1.5 rounded-lg shadow-sm transition cursor-pointer">
-                   <i class="fa-solid fa-qrcode mr-1"></i> Pay ₹15
+               </a>`;
+          } else if (isVerified) {
+            actionBtn = `<span class="text-xs text-blue-600 font-semibold italic">Processing card generation...</span>`;
+          } else {
+            actionBtn = `<div class="flex items-center justify-end space-x-2">
+                 <button onclick="openPaymentModal('${r.reqId}')" class="inline-flex items-center text-xs bg-amber-500 hover:bg-amber-600 text-white font-semibold px-3 py-1.5 rounded-lg shadow-sm transition cursor-pointer">
+                   <i class="fa-solid fa-qrcode mr-1"></i> Pay Now
                  </button>
                  <span class="text-xs text-slate-400 italic">Processing...</span>
                </div>`;
+          }
 
           const dateStr = new Date(r.timestamp).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 
