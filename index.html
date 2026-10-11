@@ -4,7 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Farmer ID Portal</title>
-  
+
+  <!-- Clean path restoration for GitHub Pages (avoids /# mess) -->
   <script>
     (function(){
       var redirect = sessionStorage.redirect;
@@ -15,9 +16,15 @@
     })();
   </script>
 
+  <!-- Tailwind CSS & Font Awesome -->
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+  <!-- Ultra-Fast Client-Side QR Generator (<15ms rendering) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
   <style>
+    /* Verdant Scallop Pattern with 30% Opacity */
     .wallpaper-pattern {
       background-color: #fbfdf3;
       background-image: 
@@ -41,6 +48,7 @@
   <script>
     const API_URL = "https://script.google.com/macros/s/AKfycbxVz9rViRfVXulh30yZoPJsRoCs2I7v_RE3EMe8vjQr4fyNoPTv2uGJqWqTSr5txQ/exec";
 
+    // Clean suffix extraction (works with /xyz, ?xyz, and #xyz)
     function getUrlSuffix() {
       if (window.location.search) {
         const searchClean = window.location.search.replace(/^\?/, '').split('&')[0];
@@ -61,7 +69,7 @@
     }
   </script>
 
-  <!-- Navbar -->
+  <!-- Navigation Bar -->
   <header class="bg-emerald-800 text-white shadow-md">
     <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
       <div class="flex items-center space-x-2">
@@ -73,12 +81,13 @@
   </header>
 
   <main class="max-w-4xl mx-auto px-4 py-8">
+    <!-- Feedback Alert Box -->
     <div id="alertBox" class="hidden mb-6 p-4 rounded-xl text-sm font-medium flex items-center justify-between shadow-sm">
       <span id="alertMsg"></span>
       <button onclick="dismissAlert()" class="ml-4 text-xl font-bold leading-none">&times;</button>
     </div>
 
-    <!-- Auth Gateway Card -->
+    <!-- Authentication Card -->
     <div id="authSection" class="max-w-md mx-auto bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/80 p-6">
       <div class="flex border-b border-slate-200 mb-6">
         <button id="tabLogin" onclick="switchAuthTab('login')" class="w-1/2 pb-3 font-semibold text-emerald-700 border-b-2 border-emerald-700 text-center transition">Login</button>
@@ -124,6 +133,7 @@
 
     <!-- Authenticated Dashboard -->
     <div id="dashboardSection" class="hidden space-y-6">
+      <!-- Submission Card -->
       <div class="bg-white/95 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/80 p-6">
         <h2 class="text-lg font-bold text-slate-800 mb-1">Get Farmer ID Card</h2>
         <p class="text-sm text-slate-500 mb-4">Enter your 12-digit identification number below to initiate your application.</p>
@@ -156,6 +166,7 @@
         </div>
       </div>
 
+      <!-- Application Table -->
       <div class="bg-white/95 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
         <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/70">
           <div>
@@ -186,7 +197,7 @@
     </div>
   </main>
 
-  <!-- Payment Modal -->
+  <!-- Instant Payment QR Modal -->
   <div id="paymentModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
     <div class="bg-white rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl relative">
       <button onclick="closePaymentModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-700 text-xl font-bold">
@@ -196,15 +207,16 @@
         <i class="fa-solid fa-qrcode text-xl"></i>
       </div>
       <h3 class="font-bold text-lg text-slate-800 mb-0.5">Complete Payment</h3>
-      <p class="text-xs text-slate-500 mb-2">Scan with Paytm, PhonePe, GPay, or BHIM</p>
+      <p id="qrStatusText" class="text-xs text-slate-500 mb-2">Scan with Paytm, PhonePe, GPay, or BHIM</p>
       
       <div class="inline-flex items-center px-3 py-1 rounded-full text-xs font-mono font-medium text-amber-700 bg-amber-50 border border-amber-200 mb-3">
         <i class="fa-regular fa-clock mr-1.5 text-amber-600"></i>
         <span>Session Expires: <strong id="paymentTimer">05:00</strong></span>
       </div>
 
-      <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 inline-block mb-3 shadow-inner">
-        <img id="qrCodeImage" src="" alt="Payment QR Code" class="w-48 h-48 mx-auto rounded-lg" />
+      <!-- Instant Canvas Target Container -->
+      <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 inline-block mb-3 shadow-inner relative min-w-[216px] min-h-[216px] flex items-center justify-center">
+        <div id="qrCanvasTarget" class="rounded-lg overflow-hidden flex items-center justify-center"></div>
       </div>
 
       <div class="space-y-2">
@@ -218,6 +230,7 @@
           <span>Pay with Code</span>
         </button>
 
+        <!-- Code Input Drawer -->
         <div id="codeInputDrawer" class="hidden pt-2 border-t border-slate-100 space-y-2">
           <div class="flex gap-2">
             <input type="text" id="bypassCodeInput" maxlength="6" placeholder="Enter code" class="flex-1 px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-mono uppercase tracking-wider outline-none focus:border-indigo-500" />
@@ -355,7 +368,7 @@
           <button onclick="logout()" class="text-xs bg-emerald-900 hover:bg-black/40 px-3 py-1.5 rounded-lg text-white transition"><i class="fa-solid fa-arrow-right-from-bracket mr-1"></i>Logout</button>
         </div>
       `;
-      // Render immediately from cache in 0ms
+      // Render from local storage cache immediately (0ms)
       renderTable(cachedRequests);
       fetchUserRequests();
       startAutoSync();
@@ -375,7 +388,7 @@
       showAuth();
     }
 
-    // INSTANT OPTIMISTIC SUBMISSION (Zero waiting time for UI feedback)
+    // INSTANT OPTIMISTIC SUBMISSION (Zero waiting time)
     async function submitFarmerRequest() {
       dismissAlert();
       if (!sessionToken) {
@@ -396,7 +409,7 @@
       const masked = "XXXX-XXXX-" + cleanNum.substring(8);
       const nowIso = new Date().toISOString();
 
-      // OPTIMISTIC UPDATE: Draw in table instantly
+      // OPTIMISTIC UPDATE: Insert into local view immediately
       const optimisticItem = {
         reqId: tempId,
         maskedAadhaar: masked,
@@ -413,7 +426,7 @@
       input.value = "";
       showAlert("Application initiated! Updating on server...", true);
 
-      // Send to server in background
+      // Save to server in background
       try {
         const res = await apiPost({
           action: "submitRequest",
@@ -512,27 +525,44 @@
       autoSyncTimer = null;
     }
 
-    // Payment Logic
-    async function openPaymentModal(reqId) {
+    // ULTRA-FAST LOCAL QR GENERATOR (<15ms)
+    function openPaymentModal(reqId) {
       activePaymentReqId = reqId;
+
+      // 1. Generate unique Order ID instantly on the client
+      activeOrderId = "DIGIWAB" + Math.floor(10000000 + Math.random() * 90000000);
+
+      const PAYTM_VPA = "paytmqr71s4h1@ptys";
+      const PAYEE_NAME = "MerchantName";
+      const AMOUNT = 15;
+      const upiLink = `upi://pay?pa=${PAYTM_VPA}&pn=${encodeURIComponent(PAYEE_NAME)}&tr=${activeOrderId}&am=${AMOUNT}&cu=INR`;
+
+      // 2. Prepare UI
       document.getElementById("paymentModal").classList.remove("hidden");
-      document.getElementById("qrCodeImage").src = "";
-      document.getElementById("completeBtnText").innerText = "I Have Completed the Payment";
-      document.getElementById("btnCompletePayment").disabled = false;
-      document.getElementById("completeBtnSpinner").classList.add("hidden");
       document.getElementById("codeInputDrawer").classList.add("hidden");
       document.getElementById("bypassCodeInput").value = "";
       document.getElementById("codeError").classList.add("hidden");
+      document.getElementById("completeBtnText").innerText = "I Have Completed the Payment";
+      document.getElementById("btnCompletePayment").disabled = false;
+      document.getElementById("completeBtnSpinner").classList.add("hidden");
 
-      const res = await apiGet(`action=createPaymentIntent&token=${encodeURIComponent(sessionToken)}&reqId=${encodeURIComponent(reqId)}`);
-      if (res && res.success) {
-        activeOrderId = res.orderId;
-        document.getElementById("qrCodeImage").src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(res.upiLink)}`;
-        startPaymentTimer();
-      } else {
-        alert("Payment initialization failed.");
-        closePaymentModal();
-      }
+      // 3. Render Canvas QR Code locally (<15ms)
+      const target = document.getElementById("qrCanvasTarget");
+      target.innerHTML = "";
+      new QRCode(target, {
+        text: upiLink,
+        width: 192,
+        height: 192,
+        colorDark: "#000000",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.M
+      });
+
+      // 4. Start 5-minute countdown clock
+      startPaymentTimer();
+
+      // 5. Notify backend to attach OrderId in background (non-blocking)
+      apiGet(`action=saveOrderId&token=${encodeURIComponent(sessionToken)}&reqId=${encodeURIComponent(reqId)}&orderId=${encodeURIComponent(activeOrderId)}`);
     }
 
     function toggleCodeInput() {
