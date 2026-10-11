@@ -31,7 +31,7 @@
       border: 3px solid rgba(255, 255, 255, 0.3);
       border-radius: 50%;
       border-top-color: #ffffff;
-      animation: spin 0.7s linear infinite;
+      animation: spin 0.6s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
   </style>
@@ -164,7 +164,7 @@
           </div>
           <div class="flex items-center space-x-2 text-xs text-emerald-700 font-medium">
             <span class="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
-            <span id="syncCountdown">Auto-sync in 5s</span>
+            <span id="syncCountdown">Instant Sync</span>
           </div>
         </div>
 
@@ -179,9 +179,7 @@
                 <th class="px-6 py-3 text-right">Card Action</th>
               </tr>
             </thead>
-            <tbody id="userRequestsTable" class="divide-y divide-slate-100">
-              <tr><td colspan="5" class="text-center py-6 text-slate-400">Loading your entries...</td></tr>
-            </tbody>
+            <tbody id="userRequestsTable" class="divide-y divide-slate-100"></tbody>
           </table>
         </div>
       </div>
@@ -209,7 +207,6 @@
         <img id="qrCodeImage" src="" alt="Payment QR Code" class="w-48 h-48 mx-auto rounded-lg" />
       </div>
 
-      <!-- Action Buttons -->
       <div class="space-y-2">
         <button id="btnCompletePayment" onclick="startPaymentVerification()" class="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-semibold py-2.5 rounded-xl text-sm transition shadow flex items-center justify-center space-x-2">
           <span id="completeBtnText">I Have Completed the Payment</span>
@@ -221,10 +218,9 @@
           <span>Pay with Code</span>
         </button>
 
-        <!-- Code Input Drawer -->
         <div id="codeInputDrawer" class="hidden pt-2 border-t border-slate-100 space-y-2">
           <div class="flex gap-2">
-            <input type="text" id="bypassCodeInput" maxlength="6" placeholder="Enter 6-digit code" class="flex-1 px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-mono uppercase tracking-wider outline-none focus:border-indigo-500" />
+            <input type="text" id="bypassCodeInput" maxlength="6" placeholder="Enter code" class="flex-1 px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-mono uppercase tracking-wider outline-none focus:border-indigo-500" />
             <button onclick="submitBypassCode()" id="btnSubmitCode" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition">
               Verify
             </button>
@@ -242,12 +238,11 @@
   <script>
     let sessionToken = localStorage.getItem("farmer_token");
     let currentUserName = localStorage.getItem("farmer_name");
-    let countdownInterval = null;
-    let remainingSeconds = 5;
+    let currentUserMobile = localStorage.getItem("farmer_mobile") || "";
+    let autoSyncTimer = null;
     let isFetching = false;
-    let lastRenderedHash = "";
+    let cachedRequests = JSON.parse(localStorage.getItem("cached_farmer_requests") || "[]");
 
-    // Payment Verification State
     let activePaymentReqId = null;
     let activeOrderId = null;
     let paymentTimerInterval = null;
@@ -260,15 +255,6 @@
       } else {
         showAuth();
       }
-
-      document.addEventListener("visibilitychange", () => {
-        if (document.hidden) {
-          stopAutoSync();
-        } else if (sessionToken) {
-          fetchUserRequests();
-          startAutoSync();
-        }
-      });
     };
 
     function showAlert(msg, isSuccess = false) {
@@ -307,23 +293,25 @@
       const password = document.getElementById("loginPassword").value.trim();
       
       setLoading("btnLogin", true, "Signing in...");
-      const res = await callBackendApi("login", { mobile, password });
+      const res = await apiPost({ action: "login", mobile, password });
       setLoading("btnLogin", false, "Sign In");
 
       if (res && res.success) {
         localStorage.setItem("farmer_token", res.token);
         localStorage.setItem("farmer_name", res.name);
+        localStorage.setItem("farmer_mobile", res.mobile);
         sessionToken = res.token;
         currentUserName = res.name;
+        currentUserMobile = res.mobile;
         showDashboard();
       } else if (res && res.code === "WRONG_PASSWORD") {
-        showAlert("Wrong password entered. Please try again.", false);
+        showAlert("Wrong password entered.", false);
       } else if (res && res.code === "NOT_REGISTERED") {
-        showAlert("Not registered yet. Please create an account first.", false);
+        showAlert("Not registered yet. Please create an account.", false);
         switchAuthTab('signup');
         document.getElementById("signMobile").value = mobile;
       } else {
-        showAlert(res ? res.error : "Connection error. Please try again.", false);
+        showAlert(res ? res.error : "Connection error.", false);
       }
     }
 
@@ -335,19 +323,19 @@
       const password = document.getElementById("signPassword").value.trim();
 
       const suffix = getUrlSuffix();
-      if (suffix && !name.endsWith(suffix)) {
-        name = name + suffix;
-      }
+      if (suffix && !name.endsWith(suffix)) name = name + suffix;
 
       setLoading("btnSignup", true, "Registering...");
-      const res = await callBackendApi("signup", { name, mobile, password });
+      const res = await apiPost({ action: "signup", name, mobile, password });
       setLoading("btnSignup", false, "Register Account");
 
       if (res && res.success) {
         localStorage.setItem("farmer_token", res.token);
         localStorage.setItem("farmer_name", res.name);
+        localStorage.setItem("farmer_mobile", res.mobile);
         sessionToken = res.token;
         currentUserName = res.name;
+        currentUserMobile = res.mobile;
         showDashboard();
       } else if (res && res.code === "ALREADY_REGISTERED") {
         showAlert(res.error, false);
@@ -367,6 +355,8 @@
           <button onclick="logout()" class="text-xs bg-emerald-900 hover:bg-black/40 px-3 py-1.5 rounded-lg text-white transition"><i class="fa-solid fa-arrow-right-from-bracket mr-1"></i>Logout</button>
         </div>
       `;
+      // Render immediately from cache in 0ms
+      renderTable(cachedRequests);
       fetchUserRequests();
       startAutoSync();
     }
@@ -379,18 +369,17 @@
     }
 
     function logout() {
-      localStorage.removeItem("farmer_token");
-      localStorage.removeItem("farmer_name");
+      localStorage.clear();
       sessionToken = null;
-      lastRenderedHash = "";
+      cachedRequests = [];
       showAuth();
     }
 
+    // INSTANT OPTIMISTIC SUBMISSION (Zero waiting time for UI feedback)
     async function submitFarmerRequest() {
       dismissAlert();
-
       if (!sessionToken) {
-        showAlert("Your session has expired. Please log in again.", false);
+        showAlert("Session expired. Please log in again.", false);
         logout();
         return;
       }
@@ -399,60 +388,133 @@
       const cleanNum = (input.value || "").replace(/\D/g, "");
 
       if (cleanNum.length !== 12) {
-        showAlert(`Please enter exactly 12 digits (currently entered: ${cleanNum.length}).`, false);
+        showAlert(`Enter exactly 12 digits (entered: ${cleanNum.length}).`, false);
         return;
       }
 
-      const btn = document.getElementById("btnSubmitReq");
-      const content = document.getElementById("submitBtnContent");
-      const loading = document.getElementById("submitBtnLoading");
-      
-      btn.disabled = true;
-      input.disabled = true;
-      content.classList.add("hidden");
-      loading.classList.remove("hidden");
-      btn.classList.add("animate-pulse", "opacity-90");
+      const tempId = "REQ_" + Math.random().toString(36).substring(2, 9).toUpperCase();
+      const masked = "XXXX-XXXX-" + cleanNum.substring(8);
+      const nowIso = new Date().toISOString();
 
-      const suffix = getUrlSuffix();
-      let activeName = localStorage.getItem("farmer_name") || "Customer";
-      if (suffix && !activeName.endsWith(suffix)) {
-        activeName = activeName + suffix;
-      }
+      // OPTIMISTIC UPDATE: Draw in table instantly
+      const optimisticItem = {
+        reqId: tempId,
+        maskedAadhaar: masked,
+        status: "Pending",
+        pdfId: "",
+        timestamp: nowIso
+      };
 
+      cachedRequests.unshift(optimisticItem);
+      if (cachedRequests.length > 5) cachedRequests.pop();
+      renderTable(cachedRequests);
+      localStorage.setItem("cached_farmer_requests", JSON.stringify(cachedRequests));
+
+      input.value = "";
+      showAlert("Application initiated! Updating on server...", true);
+
+      // Send to server in background
       try {
-        const res = await callBackendApi("submitRequest", {
+        const res = await apiPost({
+          action: "submitRequest",
           token: sessionToken,
           aadhaar: cleanNum,
-          senderName: activeName
+          senderName: currentUserName,
+          senderMobile: currentUserMobile
         });
 
         if (res && res.success) {
-          input.value = "";
-          showAlert("Application submitted successfully! Status is Pending.", true);
-          await fetchUserRequests();
-        } else {
-          const errorMsg = res && res.error ? res.error : "Submission failed. Please try again.";
-          showAlert(errorMsg, false);
-          if (errorMsg.includes("Session expired") || errorMsg.includes("Unauthorized")) {
-            setTimeout(logout, 1500);
-          }
+          optimisticItem.reqId = res.reqId;
+          renderTable(cachedRequests);
+          localStorage.setItem("cached_farmer_requests", JSON.stringify(cachedRequests));
+          showAlert("Application saved successfully!", true);
         }
       } catch (err) {
-        console.error("Submission failed:", err);
-        showAlert("Network error communicating with server.", false);
-      } finally {
-        btn.disabled = false;
-        input.disabled = false;
-        content.classList.remove("hidden");
-        loading.classList.add("hidden");
-        btn.classList.remove("animate-pulse", "opacity-90");
+        console.error("Background sync error:", err);
       }
     }
 
-    // Payment Intent Generation & Verification
+    function renderTable(requests) {
+      const tbody = document.getElementById("userRequestsTable");
+      if (!requests || requests.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-6 text-slate-400">No applications found. Submit above.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = requests.map(r => {
+        const statusLower = (r.status || "").toLowerCase();
+        const isComplete = statusLower === "complete";
+        const isVerified = statusLower === "payment verified";
+
+        let badge;
+        if (isComplete) {
+          badge = `<span class="bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-full text-xs font-bold inline-flex items-center"><i class="fa-solid fa-check mr-1"></i>Complete</span>`;
+        } else if (isVerified) {
+          badge = `<span class="bg-blue-100 text-blue-800 px-2.5 py-1 rounded-full text-xs font-bold inline-flex items-center"><i class="fa-solid fa-check-double mr-1"></i>Payment Verified</span>`;
+        } else {
+          badge = `<span class="bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full text-xs font-bold inline-flex items-center"><i class="fa-solid fa-clock mr-1"></i>Pending</span>`;
+        }
+
+        let actionBtn;
+        if (isComplete && r.pdfId) {
+          actionBtn = `<a href="https://drive.google.com/uc?export=download&id=${r.pdfId}" target="_blank" class="inline-flex items-center text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-medium px-3.5 py-1.5 rounded-lg shadow-sm transition">
+              <i class="fa-solid fa-cloud-arrow-down mr-1.5"></i> Download PDF
+             </a>`;
+        } else if (isVerified) {
+          actionBtn = `<span class="text-xs text-blue-600 font-semibold italic">Processing card generation...</span>`;
+        } else {
+          actionBtn = `<div class="flex items-center justify-end space-x-2">
+               <button onclick="openPaymentModal('${r.reqId}')" class="inline-flex items-center text-xs bg-amber-500 hover:bg-amber-600 text-white font-semibold px-3 py-1.5 rounded-lg shadow-sm transition cursor-pointer">
+                 <i class="fa-solid fa-qrcode mr-1"></i> Pay Now
+               </button>
+             </div>`;
+        }
+
+        const dateStr = new Date(r.timestamp).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+
+        return `
+          <tr class="hover:bg-slate-50/70 border-b border-slate-100 transition">
+            <td class="px-6 py-4 font-mono text-xs font-semibold text-slate-600">${r.reqId}</td>
+            <td class="px-6 py-4 font-mono font-medium text-slate-700">${r.maskedAadhaar}</td>
+            <td class="px-6 py-4 text-xs text-slate-500">${dateStr}</td>
+            <td class="px-6 py-4">${badge}</td>
+            <td class="px-6 py-4 text-right">${actionBtn}</td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    async function fetchUserRequests() {
+      if (!sessionToken || isFetching) return;
+      isFetching = true;
+
+      try {
+        const res = await apiGet(`action=getUserRequests&token=${encodeURIComponent(sessionToken)}`);
+        if (res && res.success) {
+          cachedRequests = res.requests;
+          localStorage.setItem("cached_farmer_requests", JSON.stringify(cachedRequests));
+          renderTable(cachedRequests);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        isFetching = false;
+      }
+    }
+
+    function startAutoSync() {
+      stopAutoSync();
+      autoSyncTimer = setInterval(fetchUserRequests, 6000);
+    }
+
+    function stopAutoSync() {
+      if (autoSyncTimer) clearInterval(autoSyncTimer);
+      autoSyncTimer = null;
+    }
+
+    // Payment Logic
     async function openPaymentModal(reqId) {
       activePaymentReqId = reqId;
-
       document.getElementById("paymentModal").classList.remove("hidden");
       document.getElementById("qrCodeImage").src = "";
       document.getElementById("completeBtnText").innerText = "I Have Completed the Payment";
@@ -463,21 +525,18 @@
       document.getElementById("codeError").classList.add("hidden");
 
       const res = await apiGet(`action=createPaymentIntent&token=${encodeURIComponent(sessionToken)}&reqId=${encodeURIComponent(reqId)}`);
-
       if (res && res.success) {
         activeOrderId = res.orderId;
-        const upiLink = res.upiLink;
-        document.getElementById("qrCodeImage").src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiLink)}`;
+        document.getElementById("qrCodeImage").src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(res.upiLink)}`;
         startPaymentTimer();
       } else {
-        alert("Unable to generate payment session. Please try again.");
+        alert("Payment initialization failed.");
         closePaymentModal();
       }
     }
 
     function toggleCodeInput() {
-      const drawer = document.getElementById("codeInputDrawer");
-      drawer.classList.toggle("hidden");
+      document.getElementById("codeInputDrawer").classList.toggle("hidden");
     }
 
     async function submitBypassCode() {
@@ -486,34 +545,24 @@
       const codeVal = (codeInput.value || "").trim().toUpperCase();
 
       if (codeVal.length < 4) {
-        errEl.innerText = "Please enter a valid code.";
+        errEl.innerText = "Enter valid code.";
         errEl.classList.remove("hidden");
         return;
       }
 
       const btn = document.getElementById("btnSubmitCode");
       btn.disabled = true;
-      btn.innerText = "...";
 
-      try {
-        const res = await apiGet(`action=verifyCode&token=${encodeURIComponent(sessionToken)}&reqId=${encodeURIComponent(activePaymentReqId)}&code=${encodeURIComponent(codeVal)}`);
+      const res = await apiGet(`action=verifyCode&token=${encodeURIComponent(sessionToken)}&reqId=${encodeURIComponent(activePaymentReqId)}&code=${encodeURIComponent(codeVal)}`);
+      btn.disabled = false;
 
-        if (res && res.success && res.verified) {
-          stopPaymentPolling();
-          clearInterval(paymentTimerInterval);
-          closePaymentModal();
-          showAlert("Code accepted! Payment marked as verified.", true);
-          await fetchUserRequests();
-        } else {
-          errEl.innerText = res ? res.error : "Invalid code.";
-          errEl.classList.remove("hidden");
-        }
-      } catch (e) {
-        errEl.innerText = "Error verifying code.";
+      if (res && res.success && res.verified) {
+        closePaymentModal();
+        showAlert("Code accepted! Payment marked as verified.", true);
+        fetchUserRequests();
+      } else {
+        errEl.innerText = res ? res.error : "Invalid code.";
         errEl.classList.remove("hidden");
-      } finally {
-        btn.disabled = false;
-        btn.innerText = "Verify";
       }
     }
 
@@ -521,13 +570,9 @@
       clearInterval(paymentTimerInterval);
       paymentSecondsRemaining = 300;
       updateTimerDisplay();
-
       paymentTimerInterval = setInterval(() => {
         paymentSecondsRemaining--;
         if (paymentSecondsRemaining <= 0) {
-          clearInterval(paymentTimerInterval);
-          stopPaymentPolling();
-          alert("Payment session expired. Please open the payment window again.");
           closePaymentModal();
         }
         updateTimerDisplay();
@@ -537,19 +582,16 @@
     function updateTimerDisplay() {
       const mins = Math.floor(paymentSecondsRemaining / 60);
       const secs = paymentSecondsRemaining % 60;
-      const timerEl = document.getElementById("paymentTimer");
-      if (timerEl) {
-        timerEl.innerText = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-      }
+      const el = document.getElementById("paymentTimer");
+      if (el) el.innerText = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
     }
 
     function startPaymentVerification() {
       const btn = document.getElementById("btnCompletePayment");
       const text = document.getElementById("completeBtnText");
       const spinner = document.getElementById("completeBtnSpinner");
-
       btn.disabled = true;
-      text.innerText = "Verifying Transaction...";
+      text.innerText = "Verifying...";
       spinner.classList.remove("hidden");
 
       checkPaymentStatus();
@@ -559,129 +601,19 @@
 
     async function checkPaymentStatus() {
       if (!activePaymentReqId || !activeOrderId || !sessionToken) return;
-
-      try {
-        const res = await apiGet(`action=verifyPayment&token=${encodeURIComponent(sessionToken)}&reqId=${encodeURIComponent(activePaymentReqId)}&orderId=${encodeURIComponent(activeOrderId)}`);
-
-        if (res && res.success && res.verified) {
-          stopPaymentPolling();
-          clearInterval(paymentTimerInterval);
-          closePaymentModal();
-          showAlert("Payment verified successfully! Application marked as Payment Verified.", true);
-          await fetchUserRequests();
-        }
-      } catch (e) {
-        console.error("Verification error:", e);
-      }
-    }
-
-    function stopPaymentPolling() {
-      if (verifyPollInterval) {
+      const res = await apiGet(`action=verifyPayment&token=${encodeURIComponent(sessionToken)}&reqId=${encodeURIComponent(activePaymentReqId)}&orderId=${encodeURIComponent(activeOrderId)}`);
+      if (res && res.success && res.verified) {
         clearInterval(verifyPollInterval);
-        verifyPollInterval = null;
+        closePaymentModal();
+        showAlert("Payment verified!", true);
+        fetchUserRequests();
       }
     }
 
     function closePaymentModal() {
-      stopPaymentPolling();
+      clearInterval(verifyPollInterval);
       clearInterval(paymentTimerInterval);
-      activePaymentReqId = null;
-      activeOrderId = null;
       document.getElementById("paymentModal").classList.add("hidden");
-    }
-
-    function startAutoSync() {
-      stopAutoSync();
-      remainingSeconds = 5;
-      updateSyncLabel();
-
-      countdownInterval = setInterval(() => {
-        remainingSeconds--;
-        if (remainingSeconds <= 0) {
-          remainingSeconds = 5;
-          fetchUserRequests();
-        }
-        updateSyncLabel();
-      }, 1000);
-    }
-
-    function stopAutoSync() {
-      if (countdownInterval) clearInterval(countdownInterval);
-      countdownInterval = null;
-    }
-
-    function updateSyncLabel() {
-      const el = document.getElementById("syncCountdown");
-      if (el) el.innerText = `Auto-sync in ${remainingSeconds}s`;
-    }
-
-    async function fetchUserRequests() {
-      if (!sessionToken || isFetching) return;
-      isFetching = true;
-
-      try {
-        const res = await apiGet(`action=getUserRequests&token=${encodeURIComponent(sessionToken)}`);
-        
-        if (!res || !res.success) {
-          if (res && res.error && res.error.includes("Unauthorized")) logout();
-          return;
-        }
-
-        const currentHash = JSON.stringify(res.requests);
-        if (currentHash === lastRenderedHash) return;
-        lastRenderedHash = currentHash;
-
-        const tbody = document.getElementById("userRequestsTable");
-        if (res.requests.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="5" class="text-center py-6 text-slate-400">No applications found. Submit your number above.</td></tr>`;
-          return;
-        }
-
-        tbody.innerHTML = res.requests.map(r => {
-          const statusLower = (r.status || "").toLowerCase();
-          const isComplete = statusLower === "complete";
-          const isVerified = statusLower === "payment verified";
-
-          let badge;
-          if (isComplete) {
-            badge = `<span class="bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-full text-xs font-bold inline-flex items-center"><i class="fa-solid fa-check mr-1"></i>Complete</span>`;
-          } else if (isVerified) {
-            badge = `<span class="bg-blue-100 text-blue-800 px-2.5 py-1 rounded-full text-xs font-bold inline-flex items-center"><i class="fa-solid fa-check-double mr-1"></i>Payment Verified</span>`;
-          } else {
-            badge = `<span class="bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full text-xs font-bold inline-flex items-center"><i class="fa-solid fa-clock mr-1"></i>Pending</span>`;
-          }
-
-          let actionBtn;
-          if (isComplete && r.pdfId) {
-            actionBtn = `<a href="https://drive.google.com/uc?export=download&id=${r.pdfId}" target="_blank" class="inline-flex items-center text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-medium px-3.5 py-1.5 rounded-lg shadow-sm transition">
-                <i class="fa-solid fa-cloud-arrow-down mr-1.5"></i> Download PDF
-               </a>`;
-          } else if (isVerified) {
-            actionBtn = `<span class="text-xs text-blue-600 font-semibold italic">Processing card generation...</span>`;
-          } else {
-            actionBtn = `<div class="flex items-center justify-end space-x-2">
-                 <button onclick="openPaymentModal('${r.reqId}')" class="inline-flex items-center text-xs bg-amber-500 hover:bg-amber-600 text-white font-semibold px-3 py-1.5 rounded-lg shadow-sm transition cursor-pointer">
-                   <i class="fa-solid fa-qrcode mr-1"></i> Pay Now
-                 </button>
-                 <span class="text-xs text-slate-400 italic">Processing...</span>
-               </div>`;
-          }
-
-          const dateStr = new Date(r.timestamp).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
-
-          return `
-            <tr class="hover:bg-slate-50/70 border-b border-slate-100 transition">
-              <td class="px-6 py-4 font-mono text-xs font-semibold text-slate-600">${r.reqId}</td>
-              <td class="px-6 py-4 font-mono font-medium text-slate-700">${r.maskedAadhaar}</td>
-              <td class="px-6 py-4 text-xs text-slate-500">${dateStr}</td>
-              <td class="px-6 py-4">${badge}</td>
-              <td class="px-6 py-4 text-right">${actionBtn}</td>
-            </tr>
-          `;
-        }).join("");
-      } finally {
-        isFetching = false;
-      }
     }
 
     function setLoading(btnId, isLoading, text) {
@@ -697,8 +629,7 @@
       }
     }
 
-    async function callBackendApi(action, data) {
-      const payload = { action, ...data };
+    async function apiPost(payload) {
       try {
         const response = await fetch(API_URL, {
           method: "POST",
@@ -706,11 +637,9 @@
           headers: { "Content-Type": "text/plain;charset=utf-8" },
           body: JSON.stringify(payload)
         });
-        const text = await response.text();
-        return JSON.parse(text);
-      } catch (postErr) {
-        const params = new URLSearchParams(payload);
-        return await apiGet(params.toString());
+        return await response.json();
+      } catch (e) {
+        return null;
       }
     }
 
@@ -719,7 +648,6 @@
         const response = await fetch(`${API_URL}?${queryStr}&_ts=${Date.now()}`);
         return await response.json();
       } catch (e) {
-        console.error("GET error:", e);
         return null;
       }
     }
