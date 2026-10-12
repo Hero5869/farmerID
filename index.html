@@ -249,12 +249,13 @@
   </div>
 
   <script>
-    let sessionToken = localStorage.getItem("farmer_token");
-    let currentUserName = localStorage.getItem("farmer_name");
-    let currentUserMobile = localStorage.getItem("farmer_mobile") || "";
+    // Uses sessionStorage so closing the tab or window immediately ends the session
+    let sessionToken = sessionStorage.getItem("farmer_token");
+    let currentUserName = sessionStorage.getItem("farmer_name");
+    let currentUserMobile = sessionStorage.getItem("farmer_mobile") || "";
     let autoSyncTimer = null;
     let isFetching = false;
-    let cachedRequests = JSON.parse(localStorage.getItem("cached_farmer_requests") || "[]");
+    let cachedRequests = JSON.parse(sessionStorage.getItem("cached_farmer_requests") || "[]");
 
     let activePaymentReqId = null;
     let activeOrderId = null;
@@ -310,9 +311,9 @@
       setLoading("btnLogin", false, "Sign In");
 
       if (res && res.success) {
-        localStorage.setItem("farmer_token", res.token);
-        localStorage.setItem("farmer_name", res.name);
-        localStorage.setItem("farmer_mobile", res.mobile);
+        sessionStorage.setItem("farmer_token", res.token);
+        sessionStorage.setItem("farmer_name", res.name);
+        sessionStorage.setItem("farmer_mobile", res.mobile);
         sessionToken = res.token;
         currentUserName = res.name;
         currentUserMobile = res.mobile;
@@ -343,9 +344,9 @@
       setLoading("btnSignup", false, "Register Account");
 
       if (res && res.success) {
-        localStorage.setItem("farmer_token", res.token);
-        localStorage.setItem("farmer_name", res.name);
-        localStorage.setItem("farmer_mobile", res.mobile);
+        sessionStorage.setItem("farmer_token", res.token);
+        sessionStorage.setItem("farmer_name", res.name);
+        sessionStorage.setItem("farmer_mobile", res.mobile);
         sessionToken = res.token;
         currentUserName = res.name;
         currentUserMobile = res.mobile;
@@ -368,7 +369,6 @@
           <button onclick="logout()" class="text-xs bg-emerald-900 hover:bg-black/40 px-3 py-1.5 rounded-lg text-white transition"><i class="fa-solid fa-arrow-right-from-bracket mr-1"></i>Logout</button>
         </div>
       `;
-      // Render from local storage cache immediately (0ms)
       renderTable(cachedRequests);
       fetchUserRequests();
       startAutoSync();
@@ -382,13 +382,12 @@
     }
 
     function logout() {
-      localStorage.clear();
+      sessionStorage.clear();
       sessionToken = null;
       cachedRequests = [];
       showAuth();
     }
 
-    // INSTANT OPTIMISTIC SUBMISSION (Zero waiting time)
     async function submitFarmerRequest() {
       dismissAlert();
       if (!sessionToken) {
@@ -409,7 +408,6 @@
       const masked = "XXXX-XXXX-" + cleanNum.substring(8);
       const nowIso = new Date().toISOString();
 
-      // OPTIMISTIC UPDATE: Insert into local view immediately
       const optimisticItem = {
         reqId: tempId,
         maskedAadhaar: masked,
@@ -421,12 +419,11 @@
       cachedRequests.unshift(optimisticItem);
       if (cachedRequests.length > 5) cachedRequests.pop();
       renderTable(cachedRequests);
-      localStorage.setItem("cached_farmer_requests", JSON.stringify(cachedRequests));
+      sessionStorage.setItem("cached_farmer_requests", JSON.stringify(cachedRequests));
 
       input.value = "";
       showAlert("Application initiated! Updating on server...", true);
 
-      // Save to server in background
       try {
         const res = await apiPost({
           action: "submitRequest",
@@ -439,7 +436,7 @@
         if (res && res.success) {
           optimisticItem.reqId = res.reqId;
           renderTable(cachedRequests);
-          localStorage.setItem("cached_farmer_requests", JSON.stringify(cachedRequests));
+          sessionStorage.setItem("cached_farmer_requests", JSON.stringify(cachedRequests));
           showAlert("Application saved successfully!", true);
         }
       } catch (err) {
@@ -505,7 +502,7 @@
         const res = await apiGet(`action=getUserRequests&token=${encodeURIComponent(sessionToken)}`);
         if (res && res.success) {
           cachedRequests = res.requests;
-          localStorage.setItem("cached_farmer_requests", JSON.stringify(cachedRequests));
+          sessionStorage.setItem("cached_farmer_requests", JSON.stringify(cachedRequests));
           renderTable(cachedRequests);
         }
       } catch (e) {
@@ -525,11 +522,10 @@
       autoSyncTimer = null;
     }
 
-    // ULTRA-FAST LOCAL QR GENERATOR (<15ms)
+    // Instant Client-Side QR Generator (<15ms)
     function openPaymentModal(reqId) {
       activePaymentReqId = reqId;
 
-      // 1. Generate unique Order ID instantly on the client
       activeOrderId = "DIGIWAB" + Math.floor(10000000 + Math.random() * 90000000);
 
       const PAYTM_VPA = "paytmqr71s4h1@ptys";
@@ -537,7 +533,6 @@
       const AMOUNT = 15;
       const upiLink = `upi://pay?pa=${PAYTM_VPA}&pn=${encodeURIComponent(PAYEE_NAME)}&tr=${activeOrderId}&am=${AMOUNT}&cu=INR`;
 
-      // 2. Prepare UI
       document.getElementById("paymentModal").classList.remove("hidden");
       document.getElementById("codeInputDrawer").classList.add("hidden");
       document.getElementById("bypassCodeInput").value = "";
@@ -546,7 +541,6 @@
       document.getElementById("btnCompletePayment").disabled = false;
       document.getElementById("completeBtnSpinner").classList.add("hidden");
 
-      // 3. Render Canvas QR Code locally (<15ms)
       const target = document.getElementById("qrCanvasTarget");
       target.innerHTML = "";
       new QRCode(target, {
@@ -558,10 +552,9 @@
         correctLevel: QRCode.CorrectLevel.M
       });
 
-      // 4. Start 5-minute countdown clock
       startPaymentTimer();
 
-      // 5. Notify backend to attach OrderId in background (non-blocking)
+      // Save OrderId to Sheet in background
       apiGet(`action=saveOrderId&token=${encodeURIComponent(sessionToken)}&reqId=${encodeURIComponent(reqId)}&orderId=${encodeURIComponent(activeOrderId)}`);
     }
 
