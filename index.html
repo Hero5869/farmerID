@@ -249,13 +249,12 @@
   </div>
 
   <script>
-    // Uses sessionStorage so closing the tab or window immediately ends the session
-    let sessionToken = sessionStorage.getItem("farmer_token");
-    let currentUserName = sessionStorage.getItem("farmer_name");
-    let currentUserMobile = sessionStorage.getItem("farmer_mobile") || "";
+    let sessionToken = null;
+    let currentUserName = null;
+    let currentUserMobile = "";
     let autoSyncTimer = null;
     let isFetching = false;
-    let cachedRequests = JSON.parse(sessionStorage.getItem("cached_farmer_requests") || "[]");
+    let cachedRequests = [];
 
     let activePaymentReqId = null;
     let activeOrderId = null;
@@ -263,12 +262,15 @@
     let verifyPollInterval = null;
     let paymentSecondsRemaining = 300;
 
+    // FORCED LOGOUT ON OPEN: Always clear state and start on the Login screen
     window.onload = () => {
-      if (sessionToken) {
-        showDashboard();
-      } else {
-        showAuth();
-      }
+      sessionStorage.clear();
+      localStorage.clear();
+      sessionToken = null;
+      currentUserName = null;
+      currentUserMobile = "";
+      cachedRequests = [];
+      showAuth();
     };
 
     function showAlert(msg, isSuccess = false) {
@@ -383,6 +385,7 @@
 
     function logout() {
       sessionStorage.clear();
+      localStorage.clear();
       sessionToken = null;
       cachedRequests = [];
       showAuth();
