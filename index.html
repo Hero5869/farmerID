@@ -124,6 +124,7 @@
           <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Create Password</label>
           <input type="password" id="signPassword" placeholder="Minimum 4 digits" minlength="4" required class="w-full px-3.5 py-2.5 border rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none" />
         </div>
+        
         <button type="submit" id="btnSignup" class="w-full bg-emerald-700 hover:bg-emerald-800 text-white py-3 rounded-xl font-medium transition flex items-center justify-center space-x-2 shadow">
           <span id="btnSignupText">Register Account</span>
           <div id="btnSignupSpinner" class="custom-spin w-4 h-4 hidden"></div>
@@ -133,8 +134,91 @@
 
     <!-- Authenticated Dashboard -->
     <div id="dashboardSection" class="hidden space-y-6">
-      <!-- Submission Card -->
+      
+      <!-- ================= LEGAL CONSENT DROPDOWN FOLD (MOVED HERE FOR VISIBILITY) ================= -->
       <div class="bg-white/95 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/80 p-6">
+        <h2 class="text-lg font-bold text-slate-800 mb-2">Platform Use Agreement</h2>
+        <p class="text-sm text-slate-500 mb-4">You must read and accept the zero-liability terms below before submitting an application.</p>
+        
+        <div class="mb-4 border border-slate-200 rounded-xl overflow-hidden bg-slate-50 shadow-sm">
+          <details class="group" id="legalDropdown">
+            <summary class="flex justify-between items-center font-medium cursor-pointer list-none px-4 py-3 text-xs text-slate-700 hover:bg-slate-100 transition outline-none">
+              <span class="flex items-center gap-2">
+                <i class="fa-solid fa-scale-balanced text-emerald-700"></i>
+                View Legal Terms & Zero-Liability Agreement
+              </span>
+              <span class="transition duration-300 group-open:rotate-180">
+                <i class="fa-solid fa-chevron-down text-slate-400"></i>
+              </span>
+            </summary>
+            
+            <!-- Scrollable Content Area -->
+            <div class="px-4 pb-4 pt-3 text-[10px] text-slate-600 space-y-3 h-60 overflow-y-auto border-t border-slate-200 bg-white">
+              
+              <p class="text-[11px] text-red-600 font-bold uppercase tracking-wider mb-1">Important Legal Notice</p>
+              <p>By registering an account, making a payment, or submitting any ID number (including UID) into this portal and clicking "Submit Request" or "Register Account", you are executing a legally binding electronic contract under Section 10A of the Information Technology Act, 2000. You affirmatively and irrevocably agree to all terms, conditions, and absolute liability waivers detailed below.</p>
+
+              <div>
+                <strong class="text-slate-800 text-[11px] block mt-3">1. EXPLICIT CONSENT AND LAWFUL AUTHORIZATION</strong>
+                <p class="mt-1 pl-2 border-l-2 border-slate-200"><strong class="text-slate-700">1.1. Declaration of Authority:</strong> I unequivocally declare under penalty of perjury that the 12-digit identification number provided by me is either my own, or I possess explicit, verifiable, and legally documented authorization from the actual owner to process this data on their behalf.</p>
+                <p class="mt-1 pl-2 border-l-2 border-slate-200"><strong class="text-slate-700">1.2. Purpose-Specific Consent (DPDPA 2023 Compliance):</strong> I grant clear, informed consent for this platform and its designated backend scripts to process my submitted ID number. I authorize the system to fetch official details strictly to format, crop, and generate a digitally arranged PDF card.</p>
+              </div>
+
+              <div>
+                <strong class="text-slate-800 text-[11px] block mt-3">2. ABSOLUTE DISCLAIMER OF LIABILITY (0% PLATFORM RESPONSIBILITY)</strong>
+                <p class="mt-1 pl-2 border-l-2 border-slate-200"><strong class="text-slate-700">2.1. Tool-Only Capacity:</strong> I acknowledge that this platform operates exclusively as an automated formatting utility. The platform does not verify, authenticate, or endorse the 12-digit data I input, nor does it guarantee the accuracy of the fetched output.</p>
+                <p class="mt-1 pl-2 border-l-2 border-slate-200"><strong class="text-slate-700">2.2. Zero Liability Waiver:</strong> I agree that the platform, its developers, and hosting providers bear 0% responsibility for the accuracy, legality, or consequences of the generated PDF card. The platform strictly disclaims all liability for any direct, indirect, incidental, or consequential damages arising from the creation or use of the card.</p>
+                <p class="mt-1 pl-2 border-l-2 border-slate-200"><strong class="text-slate-700">2.3. Intermediary Protection:</strong> I acknowledge that the platform claims full exemption from liability as an "Intermediary" under Section 79 of the Information Technology Act, 2000, as it merely provides a software formatting service based entirely on user-initiated inputs.</p>
+              </div>
+
+              <div>
+                <strong class="text-slate-800 text-[11px] block mt-3">3. NON-GOVERNMENTAL STATUS AND STRICT INFORMATIONAL USE</strong>
+                <p class="mt-1 pl-2 border-l-2 border-slate-200"><strong class="text-slate-700">3.1. Complete Private Entity:</strong> I understand that this platform is a 100% independent, private entity. It is not affiliated with, authorized by, endorsed by, or operating on behalf of the Government of India, any State Government, or any official issuing authority.</p>
+                <p class="mt-1 pl-2 border-l-2 border-slate-200"><strong class="text-slate-700">3.2. Unofficial Document:</strong> I acknowledge that the formatted PDF generated by this service is purely for personal viewing, convenience, and informational purposes. It is not an official statutory document and confers absolutely no legal rights or official status.</p>
+                <p class="mt-1 pl-2 border-l-2 border-slate-200"><strong class="text-slate-700">3.3. Decorative Emblems:</strong> I understand that any government symbols, logos, or emblems rendered on the final downloaded PDF are for cosmetic representation only, generated based on the public data fetched, and do not validate the document as a government-issued original.</p>
+              </div>
+
+              <div>
+                <strong class="text-slate-800 text-[11px] block mt-3">4. PAYMENTS, REFUNDS, AND VERIFICATION</strong>
+                <p class="mt-1 pl-2 border-l-2 border-slate-200"><strong class="text-slate-700">4.1. Manual Verification:</strong> I understand that payments made via the provided QR code or UPI link are subject to manual or periodic backend verification. The generation of the final PDF will only commence after successful verification of the transaction ID/Code.</p>
+                <p class="mt-1 pl-2 border-l-2 border-slate-200"><strong class="text-slate-700">4.2. No Refund Policy for Misuse:</strong> Refunds will not be provided for cards generated with incorrect ID numbers entered by the user, for fraudulent attempts, or for policy violations. In the event of a total technical failure by the platform after payment verification, disputes must be raised via the support channels provided.</p>
+              </div>
+
+              <div>
+                <strong class="text-slate-800 text-[11px] block mt-3">5. STRICT PROHIBITION ON FRAUDULENT USE</strong>
+                <p class="mt-1 pl-2 border-l-2 border-slate-200"><strong class="text-slate-700">5.1. Lawful Use Guarantee:</strong> I legally bind myself to use the generated PDF strictly for personal, non-commercial, and lawful purposes.</p>
+                <p class="mt-1 pl-2 border-l-2 border-slate-200"><strong class="text-slate-700">5.2. Prohibition of Forgery:</strong> I absolutely shall not use this card for identity theft, forgery, misrepresentation, or any fraudulent activities punishable under Sections 66C and 66D of the Information Technology Act, 2000.</p>
+                <p class="mt-1 pl-2 border-l-2 border-slate-200"><strong class="text-slate-700">5.3. Total Indemnification:</strong> I take 100% personal, civil, and criminal responsibility for any consequences arising from my use of this card. I shall completely indemnify, defend, and hold harmless the platform against any legal actions, claims, fines, or police investigations resulting from my actions.</p>
+              </div>
+
+              <div>
+                <strong class="text-slate-800 text-[11px] block mt-3">6. IRREVERSIBLE DATA DESTRUCTION POLICY</strong>
+                <p class="mt-1 pl-2 border-l-2 border-slate-200"><strong class="text-slate-700">6.1. Volatile Cache Limit:</strong> I acknowledge that the platform operates on a strict data-minimization architecture. My application history is stored locally in my browser cache (`sessionStorage`) and synced temporarily with the backend solely for my immediate download convenience.</p>
+                <p class="mt-1 pl-2 border-l-2 border-slate-200"><strong class="text-slate-700">6.2. Permanent Deletion:</strong> Once my session ends, or the maximum limit of recent applications is exceeded, the generated PDFs and associated fetched data are permanently and irreversibly destroyed from the platform’s servers.</p>
+                <p class="mt-1 pl-2 border-l-2 border-slate-200"><strong class="text-slate-700">6.3. No Recovery Acknowledgment:</strong> I explicitly understand that because zero personal ID data is permanently archived, the platform cannot restore, retrieve, or recover any previously generated cards or data under any circumstances.</p>
+              </div>
+
+              <div class="mt-4 pt-3 border-t border-slate-200">
+                <strong class="text-slate-800 text-[11px]">USER DECLARATION:</strong>
+                <p class="mt-1">By proceeding, I confirm that I have read, fully understood, and unconditionally accepted this Zero-Liability Agreement in its entirety. I understand that if I do not accept these terms, my sole remedy is to close this page immediately without creating an account or submitting an application.</p>
+              </div>
+
+            </div>
+          </details>
+        </div>
+
+        <!-- Mandatory Checkbox -->
+        <div class="flex items-start gap-2 px-1">
+          <input type="checkbox" id="consentCheckbox" class="mt-0.5 w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer">
+          <label for="consentCheckbox" class="text-[10px] text-slate-600 font-medium cursor-pointer leading-tight">
+            By checking this, I confirm I have read the dropdown terms. I take 100% legal responsibility for my actions and absolutely absolve this platform of all liability.
+          </label>
+        </div>
+      </div>
+      <!-- ================= END LEGAL CONSENT ================= -->
+
+      <!-- Submission Card -->
+      <div class="bg-white/95 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/80 p-6 opacity-50 pointer-events-none transition-opacity duration-300" id="submissionCard">
         <h2 class="text-lg font-bold text-slate-800 mb-1">Get Farmer ID Card</h2>
         <p class="text-sm text-slate-500 mb-4">Enter your 12-digit identification number below to initiate your application. Pay now to download the PDF.</p>
         
@@ -262,6 +346,18 @@
     let verifyPollInterval = null;
     let paymentSecondsRemaining = 300;
 
+    // --- NEW: Enable the Submission form ONLY when consent is checked ---
+    document.getElementById('consentCheckbox').addEventListener('change', function(e) {
+      const submissionCard = document.getElementById('submissionCard');
+      if(e.target.checked) {
+        submissionCard.classList.remove('opacity-50', 'pointer-events-none');
+        // Close the dropdown automatically when they accept to save space
+        document.getElementById('legalDropdown').removeAttribute('open');
+      } else {
+        submissionCard.classList.add('opacity-50', 'pointer-events-none');
+      }
+    });
+
     // FORCED LOGOUT ON OPEN: Always clear state and start on the Login screen
     window.onload = () => {
       sessionStorage.clear();
@@ -371,6 +467,11 @@
           <button onclick="logout()" class="text-xs bg-emerald-900 hover:bg-black/40 px-3 py-1.5 rounded-lg text-white transition"><i class="fa-solid fa-arrow-right-from-bracket mr-1"></i>Logout</button>
         </div>
       `;
+      // Reset consent checkbox when showing dashboard
+      document.getElementById('consentCheckbox').checked = false;
+      document.getElementById('submissionCard').classList.add('opacity-50', 'pointer-events-none');
+      document.getElementById('legalDropdown').setAttribute('open', '');
+
       renderTable(cachedRequests);
       fetchUserRequests();
       startAutoSync();
