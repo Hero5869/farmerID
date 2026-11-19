@@ -1,0 +1,1406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>CURRENTLY IN MAINTENANCE</title>
+  <style>
+    /* =====================================================================
+       BASE RESET & FULL-VIEWPORT LOCK
+       Zero scrollbars, zero external dependencies, pure void backdrop.
+       ===================================================================== */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #030108;
+      color: #ffffff;
+      font-family: "Arial Black", "Impact", "Helvetica Neue", system-ui, -apple-system, sans-serif;
+      cursor: crosshair;
+      touch-action: none;
+    }
+
+    /* Master stage container supporting periodic inversion / glitch shakes */
+    #stage {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      perspective: 900px;
+      background: #030108;
+      transition: filter 0.08s linear;
+    }
+
+    #stage.invert-burst {
+      filter: invert(1) hue-rotate(140deg) saturate(2.4) contrast(1.3);
+    }
+
+    #stage.hyper-glitch {
+      filter: hue-rotate(90deg) saturate(3) contrast(1.45);
+    }
+
+    /* =====================================================================
+       CANVAS LAYERS
+       ===================================================================== */
+    canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    #bg-canvas {
+      z-index: 1;
+    }
+
+    #entity-canvas {
+      z-index: 2;
+    }
+
+    /* =====================================================================
+       KINETIC 3D DISTORTED TYPOGRAPHY OVERLAY
+       Woven directly into the visual chaos with SVG turbulence & RGB splits.
+       ===================================================================== */
+    .typo-stage {
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      transform-style: preserve-3d;
+      will-change: transform;
+    }
+
+    .echo-ring {
+      position: absolute;
+      font-weight: 900;
+      letter-spacing: 0.24em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      pointer-events: none;
+      mix-blend-mode: screen;
+      will-change: transform, opacity;
+    }
+
+    .title-wrap {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: clamp(0.25rem, 1.4vh, 1rem);
+      transform-style: preserve-3d;
+      filter: url(#liquid-warp);
+      padding: 1rem;
+      max-width: 96vw;
+    }
+
+    .title-line {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      flex-wrap: nowrap;
+      line-height: 0.92;
+      text-transform: uppercase;
+      font-weight: 900;
+      letter-spacing: 0.09em;
+    }
+
+    .title-line.sub {
+      font-size: clamp(1.1rem, 3.8vw, 3.1rem);
+      letter-spacing: 0.34em;
+    }
+
+    .title-line.main {
+      font-size: clamp(2.1rem, 8.8vw, 7.6rem);
+      letter-spacing: 0.08em;
+    }
+
+    .char-slot {
+      position: relative;
+      display: inline-block;
+      will-change: transform;
+      padding: 0 0.015em;
+    }
+
+    /* Base white-hot core character */
+    .char-core {
+      position: relative;
+      z-index: 3;
+      display: inline-block;
+      color: #f9fff0;
+      text-shadow:
+        0 0 10px rgba(57, 255, 20, 0.85),
+        0 0 28px rgba(255, 0, 204, 0.7),
+        0 0 55px rgba(0, 255, 242, 0.5);
+    }
+
+    /* Chromatic aberration RGB ghost duplicates */
+    .char-ghost-r,
+    .char-ghost-c {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      mix-blend-mode: screen;
+      will-change: transform;
+    }
+
+    .char-ghost-r {
+      z-index: 2;
+      color: #ff00cc;
+      opacity: 0.82;
+    }
+
+    .char-ghost-c {
+      z-index: 1;
+      color: #00fff2;
+      opacity: 0.82;
+    }
+
+    /* Ghost trailing banners drifting in Z-space */
+    .ghost-banner {
+      position: absolute;
+      font-size: clamp(1.8rem, 7.5vw, 6.5rem);
+      font-weight: 900;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      color: transparent;
+      -webkit-text-stroke: 1.5px rgba(57, 255, 20, 0.35);
+      mix-blend-mode: screen;
+      pointer-events: none;
+      will-change: transform, opacity;
+    }
+
+    .ghost-banner.magenta {
+      -webkit-text-stroke: 1.5px rgba(255, 0, 204, 0.32);
+    }
+
+    /* =====================================================================
+       CRT SCANLINES, VIGNETTE & STATIC FILM OVERLAY
+       ===================================================================== */
+    .crt-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      pointer-events: none;
+      background:
+        repeating-linear-gradient(
+          0deg,
+          rgba(0, 0, 0, 0.28) 0px,
+          rgba(0, 0, 0, 0.28) 1px,
+          transparent 1px,
+          transparent 3px
+        ),
+        radial-gradient(
+          circle at 50% 50%,
+          transparent 42%,
+          rgba(3, 1, 10, 0.55) 80%,
+          rgba(0, 0, 0, 0.92) 100%
+        );
+      mix-blend-mode: multiply;
+    }
+
+    .crt-flicker {
+      position: fixed;
+      inset: 0;
+      z-index: 11;
+      pointer-events: none;
+      background: linear-gradient(
+        180deg,
+        transparent 0%,
+        rgba(57, 255, 20, 0.04) 48%,
+        rgba(255, 0, 204, 0.06) 50%,
+        transparent 52%
+      );
+      background-size: 100% 240%;
+      animation: scanSweep 4.2s linear infinite;
+      mix-blend-mode: screen;
+    }
+
+    @keyframes scanSweep {
+      0% { background-position: 0% -100%; }
+      100% { background-position: 0% 200%; }
+    }
+
+    /* Hidden SVG filter definitions container */
+    .svg-defs {
+      position: absolute;
+      width: 0;
+      height: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <!-- SVG Procedural Liquid Turbulence & Displacement Filter -->
+  <svg class="svg-defs" aria-hidden="true">
+    <defs>
+      <filter id="liquid-warp" x="-25%" y="-25%" width="150%" height="150%">
+        <feTurbulence
+          id="turb-node"
+          type="fractalNoise"
+          baseFrequency="0.015 0.045"
+          numOctaves="2"
+          seed="7"
+          result="noise"
+        />
+        <feDisplacementMap
+          id="disp-node"
+          in="SourceGraphic"
+          in2="noise"
+          scale="8"
+          xChannelSelector="R"
+          yChannelSelector="G"
+        />
+      </filter>
+    </defs>
+  </svg>
+
+  <div id="stage">
+    <!-- Layer 0: Psychedelic Tunnel, Plasma Grid, Oscilloscopes & Glitch Slices -->
+    <canvas id="bg-canvas"></canvas>
+
+    <!-- Layer 1: Central Maintenance Entity, Tentacles, Sparks, Eyes, 3D Wireframes, Melted Gears & Liquid Blobs -->
+    <canvas id="entity-canvas"></canvas>
+
+    <!-- Layer 2: Kinetic 3D Distorted Maintenance Typography -->
+    <div class="typo-stage" id="typo-stage" aria-label="Currently in maintenance">
+      <div class="ghost-banner" id="ghost-1" aria-hidden="true">MAINTENANCE</div>
+      <div class="ghost-banner magenta" id="ghost-2" aria-hidden="true">MAINTENANCE</div>
+      <div class="title-wrap" id="title-wrap">
+        <div class="title-line sub" id="line-sub"></div>
+        <div class="title-line main" id="line-main"></div>
+      </div>
+    </div>
+
+    <!-- Layer 3: CRT Scanlines & Sweep -->
+    <div class="crt-overlay"></div>
+    <div class="crt-flicker"></div>
+  </div>
+
+  <script>
+    /**
+     * =========================================================================
+     * SURREAL MAINTENANCE ENGINE
+     * Zero external dependencies. 100% procedural Canvas + SVG + CSS 3D.
+     * Runs autonomously at 60fps with organic cursor/touch reactivity.
+     * =========================================================================
+     */
+    (function () {
+      'use strict';
+
+      // DOM References
+      const stageEl = document.getElementById('stage');
+      const bgCanvas = document.getElementById('bg-canvas');
+      const bgCtx = bgCanvas.getContext('2d', { alpha: false });
+      const entityCanvas = document.getElementById('entity-canvas');
+      const ctx = entityCanvas.getContext('2d');
+      const typoStage = document.getElementById('typo-stage');
+      const lineSubEl = document.getElementById('line-sub');
+      const lineMainEl = document.getElementById('line-main');
+      const ghost1El = document.getElementById('ghost-1');
+      const ghost2El = document.getElementById('ghost-2');
+      const turbNode = document.getElementById('turb-node');
+      const dispNode = document.getElementById('disp-node');
+
+      // Viewport metrics
+      let W = window.innerWidth;
+      let H = window.innerHeight;
+      let CX = W * 0.5;
+      let CY = H * 0.5;
+      let MIN_DIM = Math.min(W, H);
+      let DPR = Math.min(window.devicePixelRatio || 1, 2);
+
+      // Pointer & autonomous ghost-attractor state
+      const pointer = {
+        x: CX,
+        y: CY,
+        tx: CX,
+        ty: CY,
+        vx: 0,
+        vy: 0,
+        active: false,
+        lastMove: 0
+      };
+
+      // Master simulation clock & chaos state
+      let time = 0;
+      let lastFrame = performance.now();
+      let tempo = 1.0;
+      let targetTempo = 1.0;
+      let glitchIntensity = 0;
+      let nextGlitchAt = 2.5;
+      let invertTimer = 0;
+      let paletteShift = 0;
+
+      // Acid / Neon / Void color utilities
+      function hsl(h, s, l, a = 1) {
+        return `hsla(${((h % 360) + 360) % 360}, ${s}%, ${l}%, ${a})`;
+      }
+
+      // =======================================================================
+      // 1. KINETIC TYPOGRAPHY BUILDER
+      // =======================================================================
+      const charNodes = [];
+
+      function buildKineticText(container, text, lineIndex) {
+        container.innerHTML = '';
+        for (let i = 0; i < text.length; i++) {
+          const ch = text[i];
+          const slot = document.createElement('span');
+          slot.className = 'char-slot';
+
+          if (ch === ' ') {
+            slot.innerHTML = '&nbsp;';
+            slot.style.width = '0.35em';
+            container.appendChild(slot);
+            continue;
+          }
+
+          const core = document.createElement('span');
+          core.className = 'char-core';
+          core.textContent = ch;
+
+          const ghostR = document.createElement('span');
+          ghostR.className = 'char-ghost-r';
+          ghostR.textContent = ch;
+          ghostR.setAttribute('aria-hidden', 'true');
+
+          const ghostC = document.createElement('span');
+          ghostC.className = 'char-ghost-c';
+          ghostC.textContent = ch;
+          ghostC.setAttribute('aria-hidden', 'true');
+
+          slot.appendChild(ghostC);
+          slot.appendChild(ghostR);
+          slot.appendChild(core);
+          container.appendChild(slot);
+
+          charNodes.push({
+            slot,
+            core,
+            ghostR,
+            ghostC,
+            index: i,
+            lineIndex,
+            phase: i * 0.55 + lineIndex * 1.9
+          });
+        }
+      }
+
+      buildKineticText(lineSubEl, 'CURRENTLY IN', 0);
+      buildKineticText(lineMainEl, 'MAINTENANCE', 1);
+
+      // =======================================================================
+      // 2. PROCEDURAL ENTITIES & ODDITIES DATA STRUCTURES
+      // =======================================================================
+
+      // --- A. 3D Wireframe Polyhedra (Octahedron, Cube, Icosahedron) ---
+      function createPolyhedron(type) {
+        const verts = [];
+        const edges = [];
+
+        if (type === 'octa') {
+          verts.push([1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]);
+          edges.push(
+            [0, 2], [0, 3], [0, 4], [0, 5],
+            [1, 2], [1, 3], [1, 4], [1, 5],
+            [2, 4], [4, 3], [3, 5], [5, 2]
+          );
+        } else if (type === 'cube') {
+          for (let x = -1; x <= 1; x += 2)
+            for (let y = -1; y <= 1; y += 2)
+              for (let z = -1; z <= 1; z += 2)
+                verts.push([x * 0.72, y * 0.72, z * 0.72]);
+          for (let i = 0; i < 8; i++) {
+            for (let j = i + 1; j < 8; j++) {
+              const diff =
+                (verts[i][0] !== verts[j][0] ? 1 : 0) +
+                (verts[i][1] !== verts[j][1] ? 1 : 0) +
+                (verts[i][2] !== verts[j][2] ? 1 : 0);
+              if (diff === 1) edges.push([i, j]);
+            }
+          }
+        } else {
+          // Icosahedron
+          const phi = (1 + Math.sqrt(5)) / 2;
+          const raw = [
+            [-1, phi, 0], [1, phi, 0], [-1, -phi, 0], [1, -phi, 0],
+            [0, -1, phi], [0, 1, phi], [0, -1, -phi], [0, 1, -phi],
+            [phi, 0, -1], [phi, 0, 1], [-phi, 0, -1], [-phi, 0, 1]
+          ];
+          const norm = Math.hypot(1, phi);
+          raw.forEach(v => verts.push([v[0] / norm, v[1] / norm, v[2] / norm]));
+          for (let i = 0; i < verts.length; i++) {
+            for (let j = i + 1; j < verts.length; j++) {
+              const d = Math.hypot(
+                verts[i][0] - verts[j][0],
+                verts[i][1] - verts[j][1],
+                verts[i][2] - verts[j][2]
+              );
+              if (d < 1.15) edges.push([i, j]);
+            }
+          }
+        }
+        return { verts, edges };
+      }
+
+      const polyTemplates = [
+        createPolyhedron('icosa'),
+        createPolyhedron('octa'),
+        createPolyhedron('cube')
+      ];
+
+      const floatingPolys = [];
+      for (let i = 0; i < 6; i++) {
+        floatingPolys.push({
+          template: polyTemplates[i % polyTemplates.length],
+          orbitR: 0.28 + (i % 3) * 0.14,
+          orbitAngle: (i / 6) * Math.PI * 2,
+          orbitSpeed: (i % 2 === 0 ? 1 : -1) * (0.18 + i * 0.05),
+          size: 0.055 + (i % 3) * 0.025,
+          rx: Math.random() * 6,
+          ry: Math.random() * 6,
+          rz: Math.random() * 6,
+          vrx: (Math.random() - 0.5) * 1.8,
+          vry: (Math.random() - 0.5) * 1.8,
+          vrz: (Math.random() - 0.5) * 1.2,
+          hueOffset: i * 58
+        });
+      }
+
+      // --- B. Melted Gears ---
+      const meltedGears = [];
+      for (let i = 0; i < 7; i++) {
+        meltedGears.push({
+          x: Math.random(),
+          y: Math.random(),
+          vx: (Math.random() - 0.5) * 0.045,
+          vy: (Math.random() - 0.5) * 0.045,
+          radius: 0.045 + Math.random() * 0.055,
+          teeth: 8 + Math.floor(Math.random() * 8),
+          angle: Math.random() * Math.PI * 2,
+          spin: (Math.random() > 0.5 ? 1 : -1) * (0.4 + Math.random() * 1.1),
+          meltPhase: Math.random() * Math.PI * 2,
+          hueOffset: i * 52
+        });
+      }
+
+      // --- C. Liquid-Metal Morphing Blobs ---
+      const liquidBlobs = [];
+      for (let i = 0; i < 6; i++) {
+        liquidBlobs.push({
+          x: 0.15 + Math.random() * 0.7,
+          y: 0.15 + Math.random() * 0.7,
+          vx: (Math.random() - 0.5) * 0.09,
+          vy: (Math.random() - 0.5) * 0.09,
+          baseR: 0.032 + Math.random() * 0.042,
+          lobes: 4 + Math.floor(Math.random() * 4),
+          phase: Math.random() * Math.PI * 2,
+          hueOffset: i * 65
+        });
+      }
+
+      // --- D. Writhing Procedural Cable-Tentacles ---
+      const TENTACLE_COUNT = 14;
+      const SEGMENTS = 14;
+      const tentacles = [];
+      for (let i = 0; i < TENTACLE_COUNT; i++) {
+        const baseAngle = (i / TENTACLE_COUNT) * Math.PI * 2;
+        const pts = [];
+        for (let s = 0; s < SEGMENTS; s++) {
+          pts.push({ x: CX, y: CY });
+        }
+        tentacles.push({
+          baseAngle,
+          pts,
+          lengthFactor: 0.24 + (i % 3) * 0.09,
+          thickness: 5 + (i % 4) * 2.2,
+          waveFreq: 2.2 + (i % 5) * 0.65,
+          waveAmp: 0.35 + (i % 3) * 0.18,
+          phase: i * 1.37,
+          hueOffset: i * 26
+        });
+      }
+
+      // --- E. Uncanny Blinking Eyes (1 Central + 7 Orbiting / Embedded) ---
+      const eyes = [];
+      for (let i = 0; i < 8; i++) {
+        eyes.push({
+          isCentral: i === 0,
+          orbitIndex: i,
+          orbitR: i === 0 ? 0 : 0.17 + (i % 3) * 0.075,
+          orbitAngle: (i / 7) * Math.PI * 2,
+          orbitSpeed: (i % 2 === 0 ? 0.32 : -0.26) * (0.7 + (i % 3) * 0.25),
+          size: i === 0 ? 0.095 : 0.03 + (i % 3) * 0.011,
+          blink: 0, // 0 = open, 1 = closed
+          blinkState: 'open',
+          nextBlink: 0.5 + Math.random() * 3.5,
+          saccadeX: 0,
+          saccadeY: 0,
+          targetSaccadeX: 0,
+          targetSaccadeY: 0,
+          nextSaccade: Math.random() * 1.5,
+          pupilDilation: 0.45,
+          slit: i % 3 === 1,
+          hueOffset: i * 47
+        });
+      }
+
+      // --- F. Electrical Sparks & Lightning Arcs ---
+      const sparks = [];
+      function spawnSpark(x, y, hue, count = 6) {
+        for (let i = 0; i < count; i++) {
+          const a = Math.random() * Math.PI * 2;
+          const spd = 80 + Math.random() * 280;
+          sparks.push({
+            x,
+            y,
+            vx: Math.cos(a) * spd,
+            vy: Math.sin(a) * spd,
+            life: 1,
+            decay: 1.8 + Math.random() * 2.4,
+            hue: hue + (Math.random() - 0.5) * 40,
+            size: 1.5 + Math.random() * 2.8
+          });
+        }
+      }
+
+      // =======================================================================
+      // 3. RESIZE HANDLING
+      // =======================================================================
+      function handleResize() {
+        W = window.innerWidth;
+        H = window.innerHeight;
+        CX = W * 0.5;
+        CY = H * 0.5;
+        MIN_DIM = Math.min(W, H);
+        DPR = Math.min(window.devicePixelRatio || 1, 2);
+
+        // Background canvas runs at 1x CSS pixels for blistering 60fps plasma + glitch copy
+        bgCanvas.width = Math.max(1, Math.floor(W));
+        bgCanvas.height = Math.max(1, Math.floor(H));
+
+        // Entity canvas runs at full capped DPR for razor-sharp wireframes & eyes
+        entityCanvas.width = Math.max(1, Math.floor(W * DPR));
+        entityCanvas.height = Math.max(1, Math.floor(H * DPR));
+        ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      }
+
+      window.addEventListener('resize', handleResize);
+
+      // Pointer & Touch Reactivity (No clicks needed)
+      function updatePointer(clientX, clientY) {
+        pointer.tx = clientX;
+        pointer.ty = clientY;
+        pointer.active = true;
+        pointer.lastMove = performance.now();
+      }
+
+      window.addEventListener('mousemove', (e) => updatePointer(e.clientX, e.clientY), { passive: true });
+      window.addEventListener('touchmove', (e) => {
+        if (e.touches && e.touches.length > 0) {
+          updatePointer(e.touches[0].clientX, e.touches[0].clientY);
+        }
+      }, { passive: true });
+      window.addEventListener('touchstart', (e) => {
+        if (e.touches && e.touches.length > 0) {
+          updatePointer(e.touches[0].clientX, e.touches[0].clientY);
+        }
+      }, { passive: true });
+
+      // =======================================================================
+      // 4. LAYER 0 RENDERER: PSYCHEDELIC TUNNEL, PLASMA GRID & OSCILLOSCOPES
+      // =======================================================================
+      function drawBackground(t, dt) {
+        // Void fade with slight trail persistence for hypnotic motion blur
+        bgCtx.fillStyle = glitchIntensity > 0.45 ? 'rgba(14, 0, 22, 0.34)' : 'rgba(3, 1, 10, 0.26)';
+        bgCtx.fillRect(0, 0, W, H);
+
+        // Pointer offset warps the tunnel vanishing point
+        const warpX = (pointer.x - CX) * 0.22;
+        const warpY = (pointer.y - CY) * 0.22;
+        const vx = CX + Math.sin(t * 0.9) * (MIN_DIM * 0.08) + warpX;
+        const vy = CY + Math.cos(t * 0.73) * (MIN_DIM * 0.08) + warpY;
+        const maxR = Math.hypot(W, H) * 0.78;
+
+        // 1) Acid Liquid Plasma Aura Blobs in deep background
+        bgCtx.save();
+        bgCtx.globalCompositeOperation = 'lighter';
+        for (let i = 0; i < 4; i++) {
+          const ang = t * (0.4 + i * 0.17) + i * 1.7;
+          const px = CX + Math.cos(ang) * W * 0.28 + warpX * 0.5;
+          const py = CY + Math.sin(ang * 1.25) * H * 0.26 + warpY * 0.5;
+          const rad = MIN_DIM * (0.34 + 0.1 * Math.sin(t * 1.3 + i));
+          const grad = bgCtx.createRadialGradient(px, py, 0, px, py, rad);
+          const hue = (paletteShift + i * 95 + t * 28) % 360;
+          grad.addColorStop(0, hsl(hue, 100, 48, 0.18));
+          grad.addColorStop(0.5, hsl(hue + 50, 95, 32, 0.07));
+          grad.addColorStop(1, 'rgba(0,0,0,0)');
+          bgCtx.fillStyle = grad;
+          bgCtx.beginPath();
+          bgCtx.arc(px, py, rad, 0, Math.PI * 2);
+          bgCtx.fill();
+        }
+        bgCtx.restore();
+
+        // 2) Endlessly Warping Psychedelic Hyper-Tunnel Rings
+        const ringCount = 18;
+        const spokeCount = 20;
+        bgCtx.save();
+        bgCtx.lineWidth = 1.4;
+
+        for (let i = 0; i < ringCount; i++) {
+          const z = ((i / ringCount) + (t * 0.26)) % 1;
+          const ease = z * z * z;
+          const radius = 14 + ease * maxR;
+          const hue = (115 + paletteShift + z * 220 + Math.sin(t * 2 + i) * 40) % 360;
+          const alpha = Math.min(1, z * 1.6) * (1 - z * 0.35) * 0.72;
+
+          bgCtx.strokeStyle = hsl(hue, 100, 56, alpha);
+          bgCtx.beginPath();
+          const steps = 42;
+          for (let s = 0; s <= steps; s++) {
+            const a = (s / steps) * Math.PI * 2 + t * 0.35 * (i % 2 === 0 ? 1 : -0.7);
+            const wobble =
+              1 +
+              0.12 * Math.sin(a * 5 + t * 2.6 + z * 8) +
+              0.07 * Math.cos(a * 9 - t * 3.4);
+            const rx = vx + Math.cos(a) * radius * wobble;
+            const ry = vy + Math.sin(a) * radius * wobble;
+            if (s === 0) bgCtx.moveTo(rx, ry);
+            else bgCtx.lineTo(rx, ry);
+          }
+          bgCtx.closePath();
+          bgCtx.stroke();
+        }
+
+        // 3) Warped Radial Tunnel Spokes
+        for (let s = 0; s < spokeCount; s++) {
+          const baseA = (s / spokeCount) * Math.PI * 2 + Math.sin(t * 0.5) * 0.5;
+          const hue = (310 + paletteShift + s * 18 + t * 35) % 360;
+          bgCtx.strokeStyle = hsl(hue, 100, 55, 0.22);
+          bgCtx.beginPath();
+          for (let step = 0; step <= 14; step++) {
+            const f = step / 14;
+            const r = f * f * maxR;
+            const swirl = baseA + f * Math.sin(t * 1.1) * 1.45;
+            const px = vx + Math.cos(swirl) * r;
+            const py = vy + Math.sin(swirl) * r;
+            if (step === 0) bgCtx.moveTo(px, py);
+            else bgCtx.lineTo(px, py);
+          }
+          bgCtx.stroke();
+        }
+        bgCtx.restore();
+
+        // 4) Erratic Dual Oscilloscope Waveforms (Top & Bottom edges)
+        drawOscilloscope(bgCtx, H * 0.085, t, 1, 118 + paletteShift);
+        drawOscilloscope(bgCtx, H * 0.915, t, -1, 315 + paletteShift);
+
+        // 5) Horizontal Glitch Slice Tears across the viewport
+        const sliceChance = 0.22 + glitchIntensity * 0.78;
+        if (Math.random() < sliceChance) {
+          const sliceCount = 2 + Math.floor(Math.random() * (4 + glitchIntensity * 10));
+          for (let k = 0; k < sliceCount; k++) {
+            const sy = Math.floor(Math.random() * H);
+            const sh = Math.floor(3 + Math.random() * (22 + glitchIntensity * 45));
+            const dx = (Math.random() - 0.5) * (30 + glitchIntensity * 140);
+            try {
+              bgCtx.drawImage(bgCanvas, 0, sy, W, sh, dx, sy, W, sh);
+              // Acid chromatic bar accent
+              bgCtx.fillStyle = hsl(
+                Math.random() > 0.5 ? 118 : 312,
+                100,
+                55,
+                0.12 + glitchIntensity * 0.16
+              );
+              bgCtx.fillRect(0, sy, W, Math.min(sh, 3));
+            } catch (err) {
+              // Ignore out-of-bounds slice during rapid window resize
+            }
+          }
+        }
+      }
+
+      function drawOscilloscope(c, yBase, t, dir, hue) {
+        c.save();
+        c.beginPath();
+        const segs = 90;
+        const amp = (14 + glitchIntensity * 34) * (MIN_DIM / 800 + 0.5);
+        for (let i = 0; i <= segs; i++) {
+          const f = i / segs;
+          const x = f * W;
+          const envelope = Math.sin(f * Math.PI);
+          const wave =
+            Math.sin(f * 26 + t * 9 * dir) * 0.45 +
+            Math.sin(f * 63 - t * 17 * dir) * 0.35 +
+            Math.cos(f * 115 + t * 29) * 0.2;
+          const spike = Math.random() < (0.04 + glitchIntensity * 0.12) ? (Math.random() - 0.5) * 2.4 : 0;
+          const y = yBase + (wave + spike) * amp * envelope;
+          if (i === 0) c.moveTo(x, y);
+          else c.lineTo(x, y);
+        }
+        c.strokeStyle = hsl(hue, 100, 62, 0.72);
+        c.lineWidth = 1.8;
+        c.shadowColor = hsl(hue, 100, 55, 0.9);
+        c.shadowBlur = 10;
+        c.stroke();
+        c.restore();
+      }
+
+      // =======================================================================
+      // 5. LAYER 1 RENDERER: CENTRAL MAINTENANCE ENTITY & SURREAL ODDITIES
+      // =======================================================================
+      function drawEntities(t, dt) {
+        ctx.clearRect(0, 0, W, H);
+
+        // 1) Floating Melted Gears
+        drawMeltedGears(t, dt);
+
+        // 2) Bouncing Liquid-Metal Blobs
+        drawLiquidBlobs(t, dt);
+
+        // 3) Orbiting 3D Wireframe Polyhedra
+        drawFloatingPolyhedra(t, dt);
+
+        // 4) Central Biomechanical Maintenance Entity
+        const coreX = CX + Math.sin(t * 1.15) * (MIN_DIM * 0.018) + (pointer.x - CX) * 0.04;
+        const coreY = CY + Math.cos(t * 0.95) * (MIN_DIM * 0.018) + (pointer.y - CY) * 0.04;
+
+        // 4a) Writhing Procedural Cable-Tentacles & Electrical Arcs
+        drawTentaclesAndArcs(coreX, coreY, t, dt);
+
+        // 4b) Rotating Concentric Mechanical Rings & Arcane Core
+        drawMechanicalRings(coreX, coreY, t);
+
+        // 4c) Uncanny Blinking Eyes (Orbiting + Central Cyclopean Eye)
+        drawEyes(coreX, coreY, t, dt);
+
+        // 5) Crackling Electrical Sparks
+        updateAndDrawSparks(dt);
+      }
+
+      // --- Melted Gears ---
+      function drawMeltedGears(t, dt) {
+        ctx.save();
+        for (const g of meltedGears) {
+          g.x += g.vx * dt * tempo;
+          g.y += g.vy * dt * tempo;
+          if (g.x < -0.1) g.x = 1.1;
+          if (g.x > 1.1) g.x = -0.1;
+          if (g.y < -0.1) g.y = 1.1;
+          if (g.y > 1.1) g.y = -0.1;
+          g.angle += g.spin * dt * tempo;
+
+          const gx = g.x * W;
+          const gy = g.y * H;
+          const baseR = g.radius * MIN_DIM;
+          const hue = (g.hueOffset + paletteShift + t * 25) % 360;
+
+          ctx.save();
+          ctx.translate(gx, gy);
+          ctx.rotate(g.angle);
+
+          ctx.beginPath();
+          const steps = g.teeth * 4;
+          for (let i = 0; i <= steps; i++) {
+            const a = (i / steps) * Math.PI * 2;
+            const tooth = (i % 4 < 2) ? 1.2 : 0.88;
+            // Surreal melting drip distortion
+            const drip = 1 + 0.22 * Math.sin(a * 2 + t * 2.4 + g.meltPhase) +
+              0.14 * Math.cos(a * 3 - t * 1.9);
+            const r = baseR * tooth * drip;
+            const px = Math.cos(a) * r;
+            const py = Math.sin(a) * r + Math.max(0, Math.sin(a + g.angle)) * baseR * 0.25 * Math.sin(t + g.meltPhase);
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+          }
+          ctx.closePath();
+          ctx.fillStyle = hsl(hue, 85, 22, 0.26);
+          ctx.strokeStyle = hsl(hue, 100, 62, 0.65);
+          ctx.lineWidth = 1.6;
+          ctx.fill();
+          ctx.stroke();
+
+          // Inner warped hub
+          ctx.beginPath();
+          ctx.arc(0, 0, baseR * 0.34, 0, Math.PI * 2);
+          ctx.strokeStyle = hsl(hue + 140, 100, 65, 0.7);
+          ctx.stroke();
+          ctx.restore();
+        }
+        ctx.restore();
+      }
+
+      // --- Liquid-Metal Morphing Blobs ---
+      function drawLiquidBlobs(t, dt) {
+        ctx.save();
+        for (const b of liquidBlobs) {
+          b.x += b.vx * dt * tempo;
+          b.y += b.vy * dt * tempo;
+          if (b.x < 0.06 || b.x > 0.94) b.vx *= -1;
+          if (b.y < 0.06 || b.y > 0.94) b.vy *= -1;
+
+          const bx = b.x * W;
+          const by = b.y * H;
+          const rBase = b.baseR * MIN_DIM;
+          const hue = (b.hueOffset + paletteShift + t * 40) % 360;
+
+          ctx.beginPath();
+          const pts = 36;
+          for (let i = 0; i <= pts; i++) {
+            const a = (i / pts) * Math.PI * 2;
+            const morph =
+              1 +
+              0.24 * Math.sin(a * b.lobes + t * 3.1 + b.phase) +
+              0.15 * Math.cos(a * (b.lobes - 1) - t * 2.3);
+            const r = rBase * morph;
+            const px = bx + Math.cos(a) * r;
+            const py = by + Math.sin(a) * r;
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+          }
+          ctx.closePath();
+
+          const grad = ctx.createRadialGradient(
+            bx - rBase * 0.35,
+            by - rBase * 0.35,
+            rBase * 0.08,
+            bx,
+            by,
+            rBase * 1.35
+          );
+          grad.addColorStop(0, '#ffffff');
+          grad.addColorStop(0.28, hsl(hue, 100, 66, 0.85));
+          grad.addColorStop(0.7, hsl(hue + 90, 95, 25, 0.75));
+          grad.addColorStop(1, hsl(hue + 180, 100, 55, 0.35));
+
+          ctx.fillStyle = grad;
+          ctx.fill();
+          ctx.strokeStyle = hsl(hue, 100, 75, 0.8);
+          ctx.lineWidth = 1.4;
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      // --- 3D Wireframe Polyhedra ---
+      function drawFloatingPolyhedra(t, dt) {
+        ctx.save();
+        ctx.lineCap = 'round';
+        for (const p of floatingPolys) {
+          p.orbitAngle += p.orbitSpeed * dt * tempo;
+          p.rx += p.vrx * dt * tempo;
+          p.ry += p.vry * dt * tempo;
+          p.rz += p.vrz * dt * tempo;
+
+          const ox = CX + Math.cos(p.orbitAngle) * (W * p.orbitR);
+          const oy = CY + Math.sin(p.orbitAngle * 1.15) * (H * p.orbitR * 0.85);
+          const scale = p.size * MIN_DIM * (1 + 0.14 * Math.sin(t * 2.5 + p.hueOffset));
+          const hue = (p.hueOffset + paletteShift + t * 50) % 360;
+
+          const cosX = Math.cos(p.rx), sinX = Math.sin(p.rx);
+          const cosY = Math.cos(p.ry), sinY = Math.sin(p.ry);
+          const cosZ = Math.cos(p.rz), sinZ = Math.sin(p.rz);
+
+          // Project 3D vertices with occasional vertex glitch jitter
+          const projected = p.template.verts.map(([vx, vy, vz]) => {
+            if (glitchIntensity > 0.35 && Math.random() < 0.15) {
+              vx += (Math.random() - 0.5) * 0.45;
+              vy += (Math.random() - 0.5) * 0.45;
+            }
+            // Rotate X
+            let y1 = vy * cosX - vz * sinX;
+            let z1 = vy * sinX + vz * cosX;
+            // Rotate Y
+            let x2 = vx * cosY + z1 * sinY;
+            let z2 = -vx * sinY + z1 * cosY;
+            // Rotate Z
+            let x3 = x2 * cosZ - y1 * sinZ;
+            let y3 = x2 * sinZ + y1 * cosZ;
+
+            const persp = 3.2 / (3.2 - z2);
+            return [ox + x3 * scale * persp, oy + y3 * scale * persp];
+          });
+
+          ctx.strokeStyle = hsl(hue, 100, 62, 0.85);
+          ctx.lineWidth = 1.6;
+          ctx.shadowColor = hsl(hue, 100, 55, 0.9);
+          ctx.shadowBlur = 10;
+          ctx.beginPath();
+          for (const [a, b] of p.template.edges) {
+            ctx.moveTo(projected[a][0], projected[a][1]);
+            ctx.lineTo(projected[b][0], projected[b][1]);
+          }
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      // --- Writhing Procedural Cable-Tentacles & Electrical Arcs ---
+      function drawTentaclesAndArcs(coreX, coreY, t, dt) {
+        const tips = [];
+
+        ctx.save();
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        for (let i = 0; i < tentacles.length; i++) {
+          const tent = tentacles[i];
+          const segLen = (tent.lengthFactor * MIN_DIM) / SEGMENTS;
+          const anchorR = MIN_DIM * 0.11;
+          const anchorAngle = tent.baseAngle + Math.sin(t * 0.55 + tent.phase) * 0.25;
+
+          let px = coreX + Math.cos(anchorAngle) * anchorR;
+          let py = coreY + Math.sin(anchorAngle) * anchorR;
+          tent.pts[0].x = px;
+          tent.pts[0].y = py;
+
+          // Subtle attraction toward pointer if close
+          const dxP = pointer.x - coreX;
+          const dyP = pointer.y - coreY;
+          const ptrAngle = Math.atan2(dyP, dxP);
+          let angleDiff = ptrAngle - anchorAngle;
+          while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+          while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+          const pull = Math.abs(angleDiff) < 0.95 ? (1 - Math.abs(angleDiff) / 0.95) * 0.42 : 0;
+
+          for (let s = 1; s < SEGMENTS; s++) {
+            const frac = s / SEGMENTS;
+            const wave =
+              Math.sin(t * tent.waveFreq - s * 0.55 + tent.phase) * tent.waveAmp * (0.5 + frac * 1.4) +
+              Math.cos(t * (tent.waveFreq * 1.6) + s * 0.35) * 0.18 * frac;
+            const dir = anchorAngle + wave + angleDiff * pull * frac;
+            px += Math.cos(dir) * segLen;
+            py += Math.sin(dir) * segLen;
+            tent.pts[s].x = px;
+            tent.pts[s].y = py;
+          }
+
+          const tip = tent.pts[SEGMENTS - 1];
+          tips.push(tip);
+
+          const hue = (115 + tent.hueOffset + paletteShift + Math.sin(t + i) * 35) % 360;
+
+          // Outer dark biomechanical cable sheath
+          ctx.beginPath();
+          ctx.moveTo(tent.pts[0].x, tent.pts[0].y);
+          for (let s = 1; s < SEGMENTS; s++) {
+            ctx.lineTo(tent.pts[s].x, tent.pts[s].y);
+          }
+          ctx.strokeStyle = hsl(hue, 70, 14, 0.9);
+          ctx.lineWidth = tent.thickness * 1.45;
+          ctx.stroke();
+
+          // Glowing neon nerve filament inside cable
+          ctx.strokeStyle = hsl(hue, 100, 58, 0.92);
+          ctx.lineWidth = Math.max(1.4, tent.thickness * 0.42);
+          ctx.shadowColor = hsl(hue, 100, 55, 0.9);
+          ctx.shadowBlur = 12;
+          ctx.stroke();
+          ctx.shadowBlur = 0;
+
+          // Glowing spark node at tentacle tip
+          ctx.beginPath();
+          ctx.arc(tip.x, tip.y, 3.5 + Math.sin(t * 10 + i) * 1.5, 0, Math.PI * 2);
+          ctx.fillStyle = '#ffffff';
+          ctx.fill();
+
+          // Random sparks snapping off tentacle tips
+          if (Math.random() < (0.045 + glitchIntensity * 0.15)) {
+            spawnSpark(tip.x, tip.y, hue, 3);
+          }
+        }
+
+        // Snap jagged electrical lightning arcs between nearby tentacle tips & pointer
+        for (let i = 0; i < tips.length; i++) {
+          const a = tips[i];
+          const b = tips[(i + 1) % tips.length];
+          const dist = Math.hypot(a.x - b.x, a.y - b.y);
+          if (dist < MIN_DIM * 0.34 && Math.random() < (0.14 + glitchIntensity * 0.35)) {
+            drawLightningBolt(a.x, a.y, b.x, b.y, (180 + paletteShift + i * 30) % 360);
+          }
+          // Arc to pointer when close
+          const pDist = Math.hypot(a.x - pointer.x, a.y - pointer.y);
+          if (pDist < MIN_DIM * 0.28 && Math.random() < 0.25) {
+            drawLightningBolt(a.x, a.y, pointer.x, pointer.y, 120 + paletteShift);
+            spawnSpark(pointer.x, pointer.y, 310 + paletteShift, 2);
+          }
+        }
+        ctx.restore();
+      }
+
+      function drawLightningBolt(x1, y1, x2, y2, hue) {
+        const steps = 7;
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        for (let i = 1; i < steps; i++) {
+          const f = i / steps;
+          const jx = (Math.random() - 0.5) * 26;
+          const jy = (Math.random() - 0.5) * 26;
+          ctx.lineTo(x1 + (x2 - x1) * f + jx, y1 + (y2 - y1) * f + jy);
+        }
+        ctx.lineTo(x2, y2);
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2.2;
+        ctx.shadowColor = hsl(hue, 100, 58, 1);
+        ctx.shadowBlur = 16;
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // --- Rotating Concentric Mechanical Rings ---
+      function drawMechanicalRings(cx, cy, t) {
+        ctx.save();
+        ctx.translate(cx, cy);
+
+        const rings = [
+          { r: 0.145, speed: 0.9, segs: 12, hue: 118, dash: [18, 10], width: 3.2 },
+          { r: 0.195, speed: -1.35, segs: 24, hue: 312, dash: [8, 14], width: 2.4 },
+          { r: 0.255, speed: 0.62, segs: 18, hue: 178, dash: [32, 14, 6, 14], width: 2.8 },
+          { r: 0.315, speed: -0.45, segs: 36, hue: 58, dash: [4, 18], width: 1.8 }
+        ];
+
+        rings.forEach((ring, idx) => {
+          const radius = ring.r * MIN_DIM * (1 + 0.03 * Math.sin(t * 3 + idx));
+          const hue = (ring.hue + paletteShift + t * 20) % 360;
+
+          ctx.save();
+          ctx.rotate(t * ring.speed + (glitchIntensity > 0.5 ? (Math.random() - 0.5) * 0.2 : 0));
+
+          // Dashed mechanical track
+          ctx.beginPath();
+          ctx.setLineDash(ring.dash);
+          ctx.arc(0, 0, radius, 0, Math.PI * 2);
+          ctx.strokeStyle = hsl(hue, 100, 58, 0.78);
+          ctx.lineWidth = ring.width;
+          ctx.shadowColor = hsl(hue, 100, 55, 0.8);
+          ctx.shadowBlur = 12;
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          // Radial mechanical teeth / calibration ticks
+          for (let i = 0; i < ring.segs; i++) {
+            const a = (i / ring.segs) * Math.PI * 2;
+            const len = (i % 3 === 0 ? 12 : 6) * (MIN_DIM / 750 + 0.4);
+            ctx.beginPath();
+            ctx.moveTo(Math.cos(a) * (radius - len * 0.5), Math.sin(a) * (radius - len * 0.5));
+            ctx.lineTo(Math.cos(a) * (radius + len), Math.sin(a) * (radius + len));
+            ctx.strokeStyle = hsl(hue + 40, 100, 72, 0.82);
+            ctx.lineWidth = i % 3 === 0 ? 2.4 : 1.1;
+            ctx.stroke();
+          }
+
+          ctx.restore();
+        });
+
+        ctx.restore();
+      }
+
+      // --- Uncanny Blinking Eyes ---
+      function drawEyes(coreX, coreY, t, dt) {
+        const pointerFresh = (performance.now() - pointer.lastMove) < 3500;
+
+        for (const e of eyes) {
+          // Orbit update
+          if (!e.isCentral) {
+            e.orbitAngle += e.orbitSpeed * dt * tempo;
+          }
+          const ex = e.isCentral ? coreX : coreX + Math.cos(e.orbitAngle) * (MIN_DIM * e.orbitR);
+          const ey = e.isCentral ? coreY : coreY + Math.sin(e.orbitAngle) * (MIN_DIM * e.orbitR);
+          const rx = e.size * MIN_DIM;
+          const ry = rx * 0.58;
+
+          // Autonomous blinking state machine
+          e.nextBlink -= dt;
+          if (e.blinkState === 'open' && e.nextBlink <= 0) {
+            e.blinkState = 'closing';
+          }
+          if (e.blinkState === 'closing') {
+            e.blink += dt * 11;
+            if (e.blink >= 1) {
+              e.blink = 1;
+              e.blinkState = 'opening';
+            }
+          } else if (e.blinkState === 'opening') {
+            e.blink -= dt * 7.5;
+            if (e.blink <= 0) {
+              e.blink = 0;
+              e.blinkState = 'open';
+              e.nextBlink = 1.2 + Math.random() * 4.2;
+            }
+          }
+
+          // Autonomous saccades + subtle pointer tracking
+          e.nextSaccade -= dt;
+          if (e.nextSaccade <= 0) {
+            const ang = Math.random() * Math.PI * 2;
+            const mag = Math.random() * 0.55;
+            e.targetSaccadeX = Math.cos(ang) * mag;
+            e.targetSaccadeY = Math.sin(ang) * mag;
+            e.nextSaccade = 0.25 + Math.random() * 1.4;
+          }
+          e.saccadeX += (e.targetSaccadeX - e.saccadeX) * Math.min(1, dt * 14);
+          e.saccadeY += (e.targetSaccadeY - e.saccadeY) * Math.min(1, dt * 14);
+
+          let lookX = e.saccadeX;
+          let lookY = e.saccadeY;
+
+          if (pointerFresh) {
+            const dx = pointer.x - ex;
+            const dy = pointer.y - ey;
+            const dist = Math.hypot(dx, dy) || 1;
+            const pNorm = Math.min(1, dist / (MIN_DIM * 0.45));
+            const px = (dx / dist) * pNorm * 0.65;
+            const py = (dy / dist) * pNorm * 0.65;
+            // Blend cursor tracking with uncanny micro-saccades
+            lookX = px * 0.78 + e.saccadeX * 0.22;
+            lookY = py * 0.78 + e.saccadeY * 0.22;
+          }
+
+          const openAmt = Math.max(0.03, 1 - e.blink);
+          const curRy = ry * openAmt;
+          const hue = (e.hueOffset + paletteShift + t * 32) % 360;
+
+          ctx.save();
+          ctx.translate(ex, ey);
+
+          // Almond eye clip shape
+          ctx.beginPath();
+          ctx.moveTo(-rx, 0);
+          ctx.quadraticCurveTo(0, -curRy * 1.45, rx, 0);
+          ctx.quadraticCurveTo(0, curRy * 1.45, -rx, 0);
+          ctx.closePath();
+
+          // Sclera gradient
+          const scleraGrad = ctx.createRadialGradient(0, 0, rx * 0.1, 0, 0, rx);
+          scleraGrad.addColorStop(0, '#f7fff0');
+          scleraGrad.addColorStop(0.7, '#d8f5e8');
+          scleraGrad.addColorStop(1, hsl(hue + 180, 90, 26, 1));
+          ctx.fillStyle = scleraGrad;
+          ctx.fill();
+
+          ctx.save();
+          ctx.clip();
+
+          // Subtle uncanny red/magenta sclera veins
+          ctx.strokeStyle = 'rgba(255, 0, 128, 0.35)';
+          ctx.lineWidth = 1;
+          for (let v = 0; v < 4; v++) {
+            const side = v < 2 ? -1 : 1;
+            ctx.beginPath();
+            ctx.moveTo(side * rx, (v % 2 - 0.5) * curRy * 0.6);
+            ctx.quadraticCurveTo(side * rx * 0.55, (v % 2 - 0.5) * curRy * 0.2, side * rx * 0.35, 0);
+            ctx.stroke();
+          }
+
+          // Iris
+          const irisX = lookX * rx * 0.42;
+          const irisY = lookY * ry * 0.42;
+          const irisR = rx * 0.44;
+          const irisGrad = ctx.createRadialGradient(irisX, irisY, irisR * 0.15, irisX, irisY, irisR);
+          irisGrad.addColorStop(0, '#000000');
+          irisGrad.addColorStop(0.35, hsl(hue, 100, 52, 1));
+          irisGrad.addColorStop(0.75, hsl(hue + 65, 100, 42, 1));
+          irisGrad.addColorStop(1, '#080012');
+
+          ctx.beginPath();
+          ctx.arc(irisX, irisY, irisR, 0, Math.PI * 2);
+          ctx.fillStyle = irisGrad;
+          ctx.fill();
+
+          // Dilating Pupil (round or eerie vertical slit)
+          const pulse = 0.45 + 0.16 * Math.sin(t * 4.2 + e.orbitIndex) + glitchIntensity * 0.15;
+          ctx.fillStyle = '#020006';
+          ctx.beginPath();
+          if (e.slit) {
+            ctx.ellipse(irisX, irisY, irisR * 0.22, irisR * 0.75, 0, 0, Math.PI * 2);
+          } else {
+            ctx.arc(irisX, irisY, irisR * pulse, 0, Math.PI * 2);
+          }
+          ctx.fill();
+
+          // Specular wet glint
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+          ctx.beginPath();
+          ctx.arc(irisX - irisR * 0.28, irisY - irisR * 0.28, irisR * 0.16, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.restore(); // end clip
+
+          // Glowing neon eyelid rim
+          ctx.strokeStyle = hsl(hue, 100, 62, 0.95);
+          ctx.lineWidth = e.isCentral ? 3.2 : 1.8;
+          ctx.shadowColor = hsl(hue, 100, 55, 0.95);
+          ctx.shadowBlur = 14;
+          ctx.stroke();
+
+          ctx.restore();
+        }
+      }
+
+      // --- Sparks ---
+      function updateAndDrawSparks(dt) {
+        ctx.save();
+        for (let i = sparks.length - 1; i >= 0; i--) {
+          const s = sparks[i];
+          s.x += s.vx * dt;
+          s.y += s.vy * dt;
+          s.vx *= 0.94;
+          s.vy *= 0.94;
+          s.life -= s.decay * dt;
+          if (s.life <= 0) {
+            sparks.splice(i, 1);
+            continue;
+          }
+          ctx.fillStyle = hsl(s.hue, 100, 72, s.life);
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, s.size * s.life, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      // =======================================================================
+      // 6. LAYER 2 UPDATER: KINETIC TYPOGRAPHY & SVG TURBULENCE
+      // =======================================================================
+      function updateTypography(t) {
+        // 3D tilt reacting smoothly to pointer & autonomous sway
+        const nx = (pointer.x / W - 0.5) * 2;
+        const ny = (pointer.y / H - 0.5) * 2;
+        const rotY = nx * 16 + Math.sin(t * 0.85) * 7;
+        const rotX = -ny * 12 + Math.cos(t * 0.72) * 5;
+        const rotZ = Math.sin(t * 0.53) * 2.5 + (glitchIntensity > 0.5 ? (Math.random() - 0.5) * 4 : 0);
+
+        typoStage.style.transform =
+          `rotateX(${rotX.toFixed(2)}deg) rotateY(${rotY.toFixed(2)}deg) rotateZ(${rotZ.toFixed(2)}deg)`;
+
+        // Modulate SVG feTurbulence & feDisplacementMap for living liquid text
+        const bfX = (0.012 + 0.008 * Math.sin(t * 1.7) + glitchIntensity * 0.03).toFixed(4);
+        const bfY = (0.035 + 0.02 * Math.cos(t * 2.3) + glitchIntensity * 0.05).toFixed(4);
+        const dispScale = (4.5 + 4.5 * Math.sin(t * 2.6) + glitchIntensity * 28).toFixed(2);
+        turbNode.setAttribute('baseFrequency', `${bfX} ${bfY}`);
+        dispNode.setAttribute('scale', dispScale);
+
+        // Animate each character's wave, skew, and RGB chromatic split
+        const splitBase = 2.5 + Math.abs(Math.sin(t * 2.1)) * 4 + glitchIntensity * 16;
+
+        for (let i = 0; i < charNodes.length; i++) {
+          const c = charNodes[i];
+          const waveY = Math.sin(t * 4.2 + c.phase) * (c.lineIndex === 1 ? 10 : 5);
+          const waveR = Math.cos(t * 3.1 + c.phase) * (c.lineIndex === 1 ? 6 : 3);
+          const scaleY = 1 + 0.11 * Math.sin(t * 5.2 + c.phase * 1.3);
+          const jitterX = glitchIntensity > 0.4 && Math.random() < 0.25 ? (Math.random() - 0.5) * 18 : 0;
+
+          c.slot.style.transform =
+            `translate3d(${jitterX.toFixed(1)}px, ${waveY.toFixed(1)}px, 0) rotate(${waveR.toFixed(1)}deg) scaleY(${scaleY.toFixed(3)})`;
+
+          const rx = Math.cos(t * 6 + c.phase) * splitBase;
+          const ry = Math.sin(t * 5.3 + c.phase) * (splitBase * 0.45);
+          c.ghostR.style.transform = `translate3d(${rx.toFixed(1)}px, ${ry.toFixed(1)}px, 0)`;
+          c.ghostC.style.transform = `translate3d(${(-rx).toFixed(1)}px, ${(-ry).toFixed(1)}px, 0)`;
+        }
+
+        // Echoing ghost trails drifting behind the main text
+        const g1Scale = 1.15 + 0.22 * Math.sin(t * 1.4);
+        const g1X = Math.sin(t * 0.9) * 32;
+        const g1Y = Math.cos(t * 1.1) * 24;
+        ghost1El.style.transform = `translate3d(${g1X.toFixed(1)}px, ${g1Y.toFixed(1)}px, -120px) scale(${g1Scale.toFixed(3)})`;
+        ghost1El.style.opacity = (0.28 + 0.2 * Math.sin(t * 2.2)).toFixed(2);
+
+        const g2Scale = 1.35 + 0.28 * Math.cos(t * 1.1);
+        const g2X = -Math.cos(t * 0.75) * 42;
+        const g2Y = -Math.sin(t * 0.95) * 28;
+        ghost2El.style.transform = `translate3d(${g2X.toFixed(1)}px, ${g2Y.toFixed(1)}px, -220px) scale(${g2Scale.toFixed(3)})`;
+        ghost2El.style.opacity = (0.24 + 0.2 * Math.cos(t * 1.9)).toFixed(2);
+      }
+
+      // =======================================================================
+      // 7. MASTER ANIMATION LOOP (60FPS AUTONOMOUS FEVER DREAM)
+      // =======================================================================
+      function animate(now) {
+        const rawDt = Math.min(0.05, (now - lastFrame) / 1000);
+        lastFrame = now;
+
+        // Smooth tempo shifts for alive, unpredictable rhythm
+        tempo += (targetTempo - tempo) * Math.min(1, rawDt * 2.5);
+        const dt = rawDt * tempo;
+        time += dt;
+        paletteShift = (paletteShift + rawDt * 14) % 360;
+
+        // Autonomous ghost-pointer wander when user is idle
+        if (now - pointer.lastMove > 2600) {
+          pointer.tx = CX + Math.sin(time * 0.75) * W * 0.28;
+          pointer.ty = CY + Math.cos(time * 0.62) * H * 0.26;
+        }
+        pointer.x += (pointer.tx - pointer.x) * Math.min(1, rawDt * 8);
+        pointer.y += (pointer.ty - pointer.y) * Math.min(1, rawDt * 8);
+
+        // Periodic Glitch Surges, Color Inversions & Tempo Shifts
+        nextGlitchAt -= rawDt;
+        if (nextGlitchAt <= 0) {
+          glitchIntensity = 0.75 + Math.random() * 0.55;
+          targetTempo = Math.random() > 0.4 ? (1.45 + Math.random() * 0.85) : 0.55;
+          nextGlitchAt = 2.0 + Math.random() * 4.2;
+
+          // Occasional brief inversion flash
+          if (Math.random() < 0.42) {
+            invertTimer = 0.09 + Math.random() * 0.14;
+            stageEl.classList.add('invert-burst');
+          } else {
+            stageEl.classList.add('hyper-glitch');
+            setTimeout(() => stageEl.classList.remove('hyper-glitch'), 140);
+          }
+        }
+
+        if (invertTimer > 0) {
+          invertTimer -= rawDt;
+          if (invertTimer <= 0) {
+            stageEl.classList.remove('invert-burst');
+          }
+        }
+
+        // Decay glitch surge & return tempo gently toward baseline
+        glitchIntensity = Math.max(0, glitchIntensity - rawDt * 1.45);
+        if (glitchIntensity < 0.05) {
+          targetTempo = 1.0 + Math.sin(time * 0.4) * 0.18;
+        }
+
+        // Render all layers
+        drawBackground(time, dt);
+        drawEntities(time, dt);
+        updateTypography(time);
+
+        requestAnimationFrame(animate);
+      }
+
+      // Start safely on window load
+      window.addEventListener('load', () => {
+        handleResize();
+        lastFrame = performance.now();
+        requestAnimationFrame(animate);
+      });
+    })();
+  </script>
+</body>
+</html>
